@@ -117,6 +117,7 @@ input[type=text]{font:inherit;font-size:13px;padding:5px 7px;border:1px solid #c
 #tabs .st.ok{background:#e3f2e8;color:#226339}#tabs .st.bad{background:#fbe5dd;color:#9b3415}
 #tabNote{padding:8px 20px 0;font-size:12.5px;color:var(--sub)}
 main.unused .inputs,main.unused > section:last-child{opacity:.45}
+#colWrap.unused{opacity:.45}
 #tabs .n.ic{background:none;width:auto;font-size:15px}
 #pageWrap .pnote{max-width:820px;margin:0 auto 10px;font-size:12.5px;color:var(--sub)}
 .paper{background:#fff;max-width:820px;margin:0 auto;aspect-ratio:210/297;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1px solid var(--line);position:relative;padding:7% 9%}
@@ -991,6 +992,9 @@ Object.assign(DICT, {
     slabS1: ['支距 s 為貫材間距（受載寬度）。', 's is the waler spacing (tributary width).', 's คือระยะห่างของคานกลาง (ความกว้างรับน้ำหนัก)', 's adalah jarak balok antara (lebar tributari).'],
     useWaler: ['使用貫材（未勾選時，此頁不列入計算書）', 'Use walers (when unticked, this page is left out of the report)', 'ใช้คานกลาง (หากไม่เลือก จะไม่รวมหน้านี้ในรายงาน)', 'Gunakan balok antara (jika tidak dicentang, halaman ini tidak masuk laporan)'],
     unused: ['未使用', 'Not used', 'ไม่ใช้', 'Tidak dipakai'],
+    colOffNote: ['主墊條已啟用對拉螺桿抗拉強度檢核，本頁不使用，也不列入計算書。', 'The tie rod check is enabled on the primary bearer page, so this page is not used and is left out of the report.', 'เปิดการตรวจสอบเหล็กยึดแบบแล้ว หน้านี้จึงไม่ใช้และไม่รวมในรายงาน', 'Pemeriksaan tie rod aktif; halaman ini tidak dipakai dan tidak masuk laporan.'],
+    tieColOff: ['已啟用：「5. 支撐容許承載力檢核」頁不使用，也不列入計算書。', 'Enabled: page 5 (shoring capacity check) is not used and is left out of the report.', 'เปิดแล้ว: หน้า 5 ไม่ใช้และไม่รวมในรายงาน', 'Aktif: halaman 5 tidak dipakai dan tidak masuk laporan.'],
+    s_custom_col: ['自訂斷面', 'custom section', 'หน้าตัดกำหนดเอง', 'penampang khusus'],
     tag: ['面板 · 貫材 · 次墊條 · 主墊條 · 支撐 ── 連續梁直接勁度法、載重組合、ASD / LRFD 設計檢核', 'Panel · waler · secondary joist · primary bearer · shoring — continuous-beam stiffness analysis, load combinations, ASD / LRFD checks', D.tag ? D.tag[2] : '', D.tag ? D.tag[3] : ''],
     newProj: ['新增專案', 'New project', 'โครงการใหม่', 'Proyek baru'],
     fileNote: ['所有頁面（面板、貫材、次墊條、主墊條、支撐、附件）存成同一個 JSON 檔，以 SI 單位儲存，含單位、載重組合、設計參數與報告資料。快捷鍵：Ctrl+S 儲存、Ctrl+O 開啟。', 'All pages (panel, waler, secondary joist, primary bearer, shoring, attachments) are saved in one JSON file (SI values, with units, combinations, design data and report info). Shortcuts: Ctrl+S save, Ctrl+O open.', D.fileNote ? D.fileNote[2] : '', D.fileNote ? D.fileNote[3] : ''],
@@ -1079,6 +1083,10 @@ function migrateTabs(tabs, active) {
   }
   return { tabs, active: Math.min(NBT - 1, Math.max(0, active || 0)) };
 }
+// 主墊條頁啟用對拉螺桿檢核時，支撐容許承載力檢核頁（第 5 頁）不使用、不列入計算書
+const colOff = () => !!(PROJ && PROJ.tabs[3] && PROJ.tabs[3].tie && PROJ.tabs[3].tie.on);
+// 頁面 i（0–5）是否標示為「未使用」
+const tabUnused = i => i < NBT ? PROJ.tabs[i].use === false : i === 4 ? colOff() : false;
 function defaultProject(shared) {
   const P = { active: 0, fileName: '', tabs: [] };
   for (let i = 0; i < NBT; i++) P.tabs.push(normTab(tabDefault(i), shared));
@@ -1775,7 +1783,7 @@ function openReportDialog() {
   g.append(field(T('paper'), ps)); bx.append(g);
   bx.append(el('div', { style: 'margin:12px 0 4px;font-size:12px;color:var(--sub)' }, T('pagesIncl')));
   const tb = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 16px' });
-  [0, 1, 2, 3, 4, 5].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}${i < NBT && PROJ.tabs[i].use === false ? `（${T('unused')}）` : ''}`); tb.append(l); });
+  [0, 1, 2, 3, 4, 5].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}${tabUnused(i) ? `（${T('unused')}）` : ''}`); tb.append(l); });
   bx.append(tb);
   bx.append(el('div', { style: 'margin:12px 0 4px;font-size:12px;color:var(--sub)' }, T('include')));
   const cb = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 16px' });
@@ -1920,7 +1928,7 @@ function strDesc(s) {
 async function buildReportPDF(r, progress, opts = {}) {
   if (document.fonts && document.fonts.ready) await document.fonts.ready;
   const L = makeLayout(r.paper), inc = r.inc, starts = {};
-  const sel = [0, 1, 2, 3].filter(i => (!r.tabsInc || r.tabsInc[i] !== false) && PROJ.tabs[i].use !== false); const withCol = !r.tabsInc || r.tabsInc[4] !== false; if (!sel.length && !withCol) sel.push(PROJ.active);
+  const sel = [0, 1, 2, 3].filter(i => (!r.tabsInc || r.tabsInc[i] !== false) && PROJ.tabs[i].use !== false); const withCol = (!r.tabsInc || r.tabsInc[4] !== false) && !colOff(); if (!sel.length && !withCol) sel.push(PROJ.active);
   // 章節編號依實際列入的頁面連續編號（未使用或未勾選的頁面不佔號）
   const attIncl = (PROJ.attachments || []).some(a => a.inc !== false) && (!r.tabsInc || r.tabsInc[5] !== false);
   const ORDER = [...sel, ...(withCol && typeof COLW !== 'undefined' && COLW ? [4] : []), ...(attIncl ? [5] : [])], NO = k => ORDER.indexOf(k) + 1;
@@ -2055,7 +2063,7 @@ async function buildReportPDF(r, progress, opts = {}) {
   const OFF = 2, N = L.pages.length + OFF;
   const entries = [];
   Object.keys(starts).map(Number).sort((a, b) => a - b).forEach(k => {
-    entries.push({ n: NO(k), title: T('tab' + k), page: starts[k] + OFF + 1 });
+    entries.push({ n: NO(k), title: T('tab' + k) + tocSpec(k), page: starts[k] + OFF + 1 });
     if (k === 5) subIdx.forEach(s => entries.push({ sub: true, title: s.title, page: s.idx + OFF + 1 }));
   });
   if (opts.dry) return { entries, total: N };
@@ -2113,6 +2121,29 @@ function drawCover(L, r) {
   x.font = `400 17px ${FONT}`; x.fillStyle = '#7a838c'; x.textAlign = 'center'; x.fillText(T('genBy'), W / 2, H - m - 40);
   return c;
 }
+// 目錄標題附註：各頁所選用的材料與斷面規格
+function tocSpec(k) {
+  try {
+    if (k < NBT) {
+      const t = PROJ.tabs[k], seen = [];
+      t.spans.forEach(sp => {
+        const g = sp.mat === 'steel' && sp.sec !== 'cat' && sp.grade && sp.grade !== 'custom' ? ' ' + sp.grade : '';
+        const d = `${T('m_' + sp.mat)}${g} ${secDesc(sp)}`;
+        if (!seen.includes(d)) seen.push(d);
+      });
+      return seen.length ? `：${seen.join('；')}` : '';
+    }
+    if (k === 4 && typeof COLW !== 'undefined' && COLW) {
+      const I = COLW.readSI(), sc = I.sec, n = v => +(+v).toFixed(1);
+      const sec = I.stype === 'rolled' ? `${I.name} mm` : sc.type === 'H' ? `H${n(sc.d)}×${n(sc.bf)}×${n(sc.tw)}×${n(sc.tf)} mm`
+        : sc.type === 'box' ? `□${n(sc.H)}×${n(sc.B)}×${n(sc.t)} mm` : sc.type === 'pipe' ? `Ø${n(sc.D)}×${n(sc.t)} mm` : T('s_custom_col');
+      const gs = COLW.document.getElementById('grade'), gt = gs && gs.selectedOptions[0] ? gs.selectedOptions[0].textContent.replace(/\s*\(Fy.*$/, '') : '';
+      const grade = gs && gs.value === 'custom' ? `Fy = ${n(I.Fy)} MPa` : gt;
+      return `：${T('m_steel')}${grade ? ' ' + grade : ''} ${sec}`;
+    }
+  } catch (e) { }
+  return '';
+}
 function drawTOC(L, entries, N) {
   const [c, x] = blankPage(L), W = L.W, M = L.M;
   x.fillStyle = '#1d2329'; x.textAlign = 'center'; x.font = `700 44px ${FONT}`; x.fillText(T('tocTab'), W / 2, M + 70);
@@ -2121,9 +2152,11 @@ function drawTOC(L, entries, N) {
   const line = (label, page, bold, sub) => {
     const fs = sub ? 22 : 27, ind = sub ? 70 : 30;
     x.font = `${bold ? 700 : 400} ${fs}px ${FONT}`; x.fillStyle = sub ? '#39424b' : '#1d2329'; x.textAlign = 'left';
-    let lab = label; const maxL = W - 2 * M - ind - 140; while (x.measureText(lab).width > maxL && lab.length > 4) lab = lab.slice(0, -2); if (lab !== label) lab += '…';
-    x.fillText(lab, M + ind, y);
-    const lw = x.measureText(lab).width; x.textAlign = 'right'; x.font = `${sub ? 400 : 600} ${fs}px ${MONO}`; x.fillText(String(page), W - M - 20, y);
+    // 標題過長時換行（最多三行），頁碼與導引點放在最後一行
+    const maxL = W - 2 * M - ind - 140, hang = sub ? 0 : 38;
+    let lines = wrapCtx(x, label, maxL); if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].slice(0, -1) + '…'; }
+    lines.forEach((ln, k) => { if (k) y += fs * 1.4; x.fillText(ln, M + ind + (k ? hang : 0), y); });
+    const lab = lines[lines.length - 1], lw = x.measureText(lab).width + (lines.length > 1 ? hang : 0); x.textAlign = 'right'; x.font = `${sub ? 400 : 600} ${fs}px ${MONO}`; x.fillText(String(page), W - M - 20, y);
     const pw = x.measureText(String(page)).width; x.fillStyle = '#9aa3ab'; x.font = `400 ${fs}px ${FONT}`;
     for (let dx = M + ind + lw + 16; dx < W - M - 20 - pw - 14; dx += 14) x.fillText('.', dx + 4, y);
     y += sub ? 46 : 66;
@@ -2384,9 +2417,10 @@ renderTabs = function () {
   if (PROJ.col) nav.querySelectorAll('button').forEach(b => b.classList.remove('on'));
   const st = COLW ? colStatus() : null;
   const b = el('button'); if (PROJ.col) b.className = 'on';
-  b.innerHTML = `<span class="n">5</span>${T('tab4')}${st ? `<span class="st ${st.ok ? 'ok' : 'bad'}">${fmt(st.ratio, 2)} ${T(st.ok ? 'ok' : 'ng')}</span>` : ''}`;
+  b.innerHTML = `<span class="n">5</span>${T('tab4')}${colOff() ? `<span class="st">${T('unused')}</span>` : st ? `<span class="st ${st.ok ? 'ok' : 'bad'}">${fmt(st.ratio, 2)} ${T(st.ok ? 'ok' : 'ng')}</span>` : ''}`;
   b.onclick = () => switchTab(4); nav.append(b);
-  if (PROJ.col) $('tabNote').textContent = T('tabNote4');
+  if (PROJ.col) { $('tabNote').textContent = T('tabNote4'); if (colOff()) $('tabNote').append(el('b', { style: 'margin-left:10px;color:#9b3415' }, T('colOffNote'))); }
+  $('colWrap').classList.toggle('unused', colOff());
   const rb = COLW && COLW.document.getElementById('btnReac'); if (rb && rb._setLab) rb._setLab();
 };
 const _switchTab = switchTab;
@@ -2442,7 +2476,7 @@ async function renderTOC(force) {
   pageWrap.append(el('div', { class: 'pnote' }, T('tocNote')));
   const bar = el('div', { class: 'tocbar' });
   const tb = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 16px' });
-  [0, 1, 2, 3, 4, 5].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); TOCC = null; renderTOC(true); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}${i < NBT && PROJ.tabs[i].use === false ? `（${T('unused')}）` : ''}`); tb.append(l); });
+  [0, 1, 2, 3, 4, 5].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); TOCC = null; renderTOC(true); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}${tabUnused(i) ? `（${T('unused')}）` : ''}`); tb.append(l); });
   const btn = el('button', { class: 'pri' }, '↻ ' + T('tocRecalc')); btn.onclick = () => { TOCC = null; renderTOC(true); };
   bar.append(tb, btn); pageWrap.append(bar);
   const paper = el('div', { class: 'paper toc' }); paper.append(el('div', { class: 'ttitle' }, T('tocTab')), el('div', { class: 'cbar sm' }));
@@ -2746,9 +2780,10 @@ function renderTiePanel() {
   const t = S.tie;
   box.innerHTML = `<h2><span class="num">7</span><span>${T('tieTitle')}</span></h2>`;
   const on = el('label', { class: 'chk' }), cb = el('input', { type: 'checkbox', id: 'tieOn' });
-  cb.checked = !!t.on; cb.onchange = () => { t.on = cb.checked; renderTiePanel(); schedule(); };
+  cb.checked = !!t.on; cb.onchange = () => { t.on = cb.checked; DIRTY = true; renderTiePanel(); schedule(); renderTabs(); if (typeof TOCC !== 'undefined') TOCC = null; };
   on.append(cb, ' ' + T('tieOn')); box.append(on);
   if (!t.on) return;
+  box.append(el('div', { class: 'note', style: 'color:#9b3415;margin-top:4px' }, T('tieColOff')));
   const rod = tieRod(t.rod); t.rod = rod.id;
   let nuts = nutsFor(rod.th); if (!nuts.some(n => n.id === t.nut)) t.nut = nuts.length ? nuts[0].id : '';
   const g = el('div', { class: 'g mt' });
