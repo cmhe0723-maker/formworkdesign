@@ -116,6 +116,7 @@ input[type=text]{font:inherit;font-size:13px;padding:5px 7px;border:1px solid #c
 #tabs .st{font-family:var(--mono);font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:10px}
 #tabs .st.ok{background:#e3f2e8;color:#226339}#tabs .st.bad{background:#fbe5dd;color:#9b3415}
 #tabNote{padding:8px 20px 0;font-size:12.5px;color:var(--sub)}
+main.unused .inputs,main.unused > section:last-child{opacity:.45}
 #tabs .n.ic{background:none;width:auto;font-size:15px}
 #pageWrap .pnote{max-width:820px;margin:0 auto 10px;font-size:12.5px;color:var(--sub)}
 .paper{background:#fff;max-width:820px;margin:0 auto;aspect-ratio:210/297;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1px solid var(--line);position:relative;padding:7% 9%}
@@ -232,6 +233,7 @@ table.combo td.lbl{font-family:var(--mono);font-size:11.5px;color:var(--sub);whi
       </div>
       <div class="note" data-i="deflNote"></div>
     </div>
+    <div class="panel" id="tiePanel" style="display:none"></div>
     <div class="panel note">
       <details class="help"><summary data-i="help"></summary>
         <p data-ih="help1"></p><p data-ih="help2"></p><p data-ih="help3"></p><p data-ih="help4"></p><p data-ih="codes"></p>
@@ -975,6 +977,26 @@ Object.assign(DICT, {
   codesTW: ['鋼：鋼構造建築物鋼結構設計技術規範（ASD 容許應力設計法／LRFD 極限設計法）；RC：混凝土結構設計規範（土木 401-110，同 ACI 318-19）；木：NDS 2018（參考）；鋁：簡化檢核；載重組合：建築物載重規定。結果僅供初步設計參考，正式設計請依適用規範複核。', 'Steel: Taiwan steel structure design code (ASD / LRFD); RC: Taiwan concrete code (same as ACI 318-19); timber: NDS 2018 (reference); aluminum: simplified; combinations: Taiwan building load provisions. For preliminary design only.', 'เหล็ก: มาตรฐานไต้หวัน (ASD / LRFD); คสล.: เทียบ ACI 318-19; ไม้: NDS 2018; ใช้สำหรับออกแบบเบื้องต้นเท่านั้น', 'Baja: standar baja Taiwan (ASD / LRFD); beton: setara ACI 318-19; kayu: NDS 2018; hanya untuk desain awal.'],
 });
 </script>
+<script>// ===== 分頁重新編號：插入「貫材」為第 2 頁 =====
+(() => {
+  const D = DICT;
+  Object.assign(D, {
+    tab5: D.tab4, tab4: D.tab3, tab3: D.tab2, tab2: D.tab1,
+    tabNote4: D.tabNote3, tabNote3: D.tabNote2, tabNote2: D.tabNote1,
+    slabS3: D.slabS2, slabS2: D.slabS1,
+  });
+  Object.assign(D, {
+    tab1: ['貫材', 'Waler', 'คานกลาง', 'Balok antara'],
+    tabNote1: ['貫材位於面板與次墊條之間，支點為次墊條；載重 = 樓版載重 × 貫材間距。可勾選是否使用，未使用時不列入計算書。', 'Walers sit between the panel and the secondary joists and rest on the joists; load = slab load × waler spacing. Tick whether walers are used; unused walers are left out of the report.', 'คานกลางอยู่ระหว่างแผ่นแบบกับตงรอง เลือกได้ว่าจะใช้หรือไม่ หากไม่ใช้จะไม่รวมในรายงาน', 'Balok antara berada di antara panel dan gelagar sekunder; dapat dipilih digunakan atau tidak.'],
+    slabS1: ['支距 s 為貫材間距（受載寬度）。', 's is the waler spacing (tributary width).', 's คือระยะห่างของคานกลาง (ความกว้างรับน้ำหนัก)', 's adalah jarak balok antara (lebar tributari).'],
+    useWaler: ['使用貫材（未勾選時，此頁不列入計算書）', 'Use walers (when unticked, this page is left out of the report)', 'ใช้คานกลาง (หากไม่เลือก จะไม่รวมหน้านี้ในรายงาน)', 'Gunakan balok antara (jika tidak dicentang, halaman ini tidak masuk laporan)'],
+    unused: ['未使用', 'Not used', 'ไม่ใช้', 'Tidak dipakai'],
+    tag: ['面板 · 貫材 · 次墊條 · 主墊條 · 支撐 ── 連續梁直接勁度法、載重組合、ASD / LRFD 設計檢核', 'Panel · waler · secondary joist · primary bearer · shoring — continuous-beam stiffness analysis, load combinations, ASD / LRFD checks', D.tag ? D.tag[2] : '', D.tag ? D.tag[3] : ''],
+    newProj: ['新增專案', 'New project', 'โครงการใหม่', 'Proyek baru'],
+    fileNote: ['所有頁面（面板、貫材、次墊條、主墊條、支撐、附件）存成同一個 JSON 檔，以 SI 單位儲存，含單位、載重組合、設計參數與報告資料。快捷鍵：Ctrl+S 儲存、Ctrl+O 開啟。', 'All pages (panel, waler, secondary joist, primary bearer, shoring, attachments) are saved in one JSON file (SI values, with units, combinations, design data and report info). Shortcuts: Ctrl+S save, Ctrl+O open.', D.fileNote ? D.fileNote[2] : '', D.fileNote ? D.fileNote[3] : ''],
+  });
+})();
+</script>
 <script>
 // ===================== 語言 =====================
 let S;
@@ -1027,7 +1049,8 @@ const SLAB0 = { on: false, t: 250, gc: 2.4 * 9.80665, sd: 0, ll: 0.25 * 9.80665,
 function tabDefault(i) {
   const asd = { method: 'ASD', dl: { L: 360, T: 240, mode: 'both', abs: 3 } };
   if (i === 0) return base({ ...asd, slab: { ...SLAB0, on: true, s: 1.0 }, spans: [0.3, 0.3, 0.3].map(L => ({ ...SPAN0, L, mat: 'wood', E: 6, sec: 'rect', b: 1000, h: 18, Fb: 10, Fv: 0.8 })), supports: [{ type: 'pin' }, { type: 'roller' }, { type: 'roller' }, { type: 'roller' }] });
-  if (i === 1) return base({ ...asd, slab: { ...SLAB0, on: true, s: 0.3 }, spans: [1.2, 1.2, 1.2].map(L => ({ ...SPAN0, L, sec: 'cat', catId: 'TB' })), supports: [{ type: 'pin' }, { type: 'roller' }, { type: 'roller' }, { type: 'roller' }] });
+  // 1 貫材（預設不使用）、2 次墊條：內容相同
+  if (i === 1 || i === 2) return base({ ...asd, ...(i === 1 ? { use: false } : {}), slab: { ...SLAB0, on: true, s: 0.3 }, spans: [1.2, 1.2, 1.2].map(L => ({ ...SPAN0, L, sec: 'cat', catId: 'TB' })), supports: [{ type: 'pin' }, { type: 'roller' }, { type: 'roller' }, { type: 'roller' }] });
   return base({ ...asd, slab: { ...SLAB0, on: true, s: 1.2 }, spans: [1.8, 1.8, 1.8].map(L => ({ ...SPAN0, L, sec: 'cat', catId: 'BBx' })), supports: [{ type: 'pin' }, { type: 'roller' }, { type: 'roller' }, { type: 'roller' }] });
 }
 function normTab(t, shared) {
@@ -1042,18 +1065,31 @@ function normTab(t, shared) {
   o.dl = { L: 360, T: 240, mode: 'ratio', abs: 3, ...(o.dl || {}) };
   o.slab = { ...SLAB0, ...(o.slab || {}) };
   o.lang = shared.lang; o.u = shared.u; o.rep = shared.rep;
+  o.use = o.use !== false;                                   // 是否使用（貫材頁可取消）
+  o.tie = { on: false, rod: 'BS84-17', nut: 'WN94-17B', ...(o.tie || {}) };  // 對拉螺桿檢核（主墊條頁）
   return o;
+}
+// 梁頁數：0 面板、1 貫材、2 次墊條、3 主墊條
+const NBT = 4;
+// 舊版（三頁：面板、次墊條、主墊條）轉為四頁：插入未使用的貫材頁
+function migrateTabs(tabs, active) {
+  if (Array.isArray(tabs) && tabs.length === 3) {
+    tabs = [tabs[0], tabDefault(1), tabs[1], tabs[2]];
+    active = active >= 1 ? active + 1 : active || 0;
+  }
+  return { tabs, active: Math.min(NBT - 1, Math.max(0, active || 0)) };
 }
 function defaultProject(shared) {
   const P = { active: 0, fileName: '', tabs: [] };
-  for (let i = 0; i < 3; i++) P.tabs.push(normTab(tabDefault(i), shared));
+  for (let i = 0; i < NBT; i++) P.tabs.push(normTab(tabDefault(i), shared));
   return P;
 }
 let PROJ = null;
 try { PROJ = JSON.parse(localStorage.getItem('cbeam-v3') || 'null'); } catch (e) { PROJ = null; }
 {
   const sh = { lang: 'zh', u: { F: 'kN', L: 'm', d: 'mm', s: 'MPa' }, rep: undefined, code: undefined, method: undefined };
-  if (PROJ && Array.isArray(PROJ.tabs) && PROJ.tabs.length === 3) { const t0 = PROJ.tabs[PROJ.active || 0]; sh.lang = t0.lang || 'zh'; sh.u = t0.u || sh.u; sh.rep = t0.rep; sh.code = t0.code || 'AISC'; sh.method = t0.method; PROJ.tabs = PROJ.tabs.map(t => normTab(t, sh)); PROJ.active = PROJ.active || 0; }
+  if (PROJ && Array.isArray(PROJ.tabs) && PROJ.tabs.length === 3) { const m = migrateTabs(PROJ.tabs, PROJ.active); PROJ.tabs = m.tabs; PROJ.active = m.active; }
+  if (PROJ && Array.isArray(PROJ.tabs) && PROJ.tabs.length === NBT) { const t0 = PROJ.tabs[PROJ.active || 0]; sh.lang = t0.lang || 'zh'; sh.u = t0.u || sh.u; sh.rep = t0.rep; sh.code = t0.code || 'AISC'; sh.method = t0.method; PROJ.tabs = PROJ.tabs.map(t => normTab(t, sh)); PROJ.active = PROJ.active || 0; }
   else { S = { lang: 'zh' }; PROJ = defaultProject(sh); }
   S = PROJ.tabs[PROJ.active];
 }
@@ -1405,7 +1441,7 @@ function renderSlab() {
     const res = el('div', { class: 'slabres' });
     const resTxt = () => { const { PD, PL } = slabVals(sl); return `PD = <b>${fq('w', PD)}</b> ${un('w')}<br>PL = <b>${fq('w', PL)}</b> ${un('w')}`; };
     res.innerHTML = resTxt(); g.append(res); wrap.append(g);
-    wrap.append(el('div', { class: 'note', style: 'margin-top:4px' }, T('slabS' + Math.min(2, PROJ.active)) + ' PD = (γc·t + qSD)·s，PL = qL·s'));
+    wrap.append(el('div', { class: 'note', style: 'margin-top:4px' }, T('slabS' + Math.min(3, PROJ.active)) + ' PD = (γc·t + qSD)·s，PL = qL·s'));
   }
   box.append(wrap);
 }
@@ -1691,7 +1727,7 @@ $('copyCsv').onclick = async () => {
 $('lang').value = S.lang || 'zh';
 applyStatic(); renderUnits();
 // 逐頁計算一次，取得各頁的檢核狀態
-{ const act = PROJ.active; for (let i = 0; i < 3; i++) { if (i === act) continue; S = PROJ.tabs[i]; RES = null; lastDC = null; try { buildViewOptions(); run(); } catch (e) { } } S = PROJ.tabs[act]; }
+{ const act = PROJ.active; for (let i = 0; i < NBT; i++) { if (i === act) continue; S = PROJ.tabs[i]; RES = null; lastDC = null; try { buildViewOptions(); run(); } catch (e) { } } S = PROJ.tabs[act]; }
 renderInputs(); run();
 </script>
 <script>// ===================== 列印／PDF 計算書 =====================
@@ -1721,10 +1757,11 @@ const CSSVARS = { '--accent': '#1f4e79', '--R': '#6b3fa0', '--V': '#2563a8', '--
 
 function ensureRep() {
   S.rep = S.rep || {};
-  const r = S.rep, d = { name: '', item: '', designer: '', date: new Date().toISOString().slice(0, 10), paper: 'A4', inc: { inputs: true, diag: true, res: true, design: true, details: true }, tabsInc: [true, true, true, true, true] };
+  const r = S.rep, d = { name: '', item: '', designer: '', date: new Date().toISOString().slice(0, 10), paper: 'A4', inc: { inputs: true, diag: true, res: true, design: true, details: true }, tabsInc: [true, true, true, true, true, true] };
   for (const k in d) if (r[k] === undefined) r[k] = d[k];
   if (r.item === '' && r.member) r.item = r.member;
-  while (r.tabsInc.length < 5) r.tabsInc.push(true);
+  if (r.tabsInc.length === 5) r.tabsInc.splice(1, 0, true);   // 舊版（無貫材頁）
+  while (r.tabsInc.length < 6) r.tabsInc.push(true);
   if (typeof syncShared === 'function') syncShared();
   return r;
 }
@@ -1738,7 +1775,7 @@ function openReportDialog() {
   g.append(field(T('paper'), ps)); bx.append(g);
   bx.append(el('div', { style: 'margin:12px 0 4px;font-size:12px;color:var(--sub)' }, T('pagesIncl')));
   const tb = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 16px' });
-  [0, 1, 2, 3, 4].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}`); tb.append(l); });
+  [0, 1, 2, 3, 4, 5].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}${i < NBT && PROJ.tabs[i].use === false ? `（${T('unused')}）` : ''}`); tb.append(l); });
   bx.append(tb);
   bx.append(el('div', { style: 'margin:12px 0 4px;font-size:12px;color:var(--sub)' }, T('include')));
   const cb = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 16px' });
@@ -1883,7 +1920,10 @@ function strDesc(s) {
 async function buildReportPDF(r, progress, opts = {}) {
   if (document.fonts && document.fonts.ready) await document.fonts.ready;
   const L = makeLayout(r.paper), inc = r.inc, starts = {};
-  const sel = [0, 1, 2].filter(i => !r.tabsInc || r.tabsInc[i] !== false); const withCol = !r.tabsInc || r.tabsInc[3] !== false; if (!sel.length && !withCol) sel.push(PROJ.active);
+  const sel = [0, 1, 2, 3].filter(i => (!r.tabsInc || r.tabsInc[i] !== false) && PROJ.tabs[i].use !== false); const withCol = !r.tabsInc || r.tabsInc[4] !== false; if (!sel.length && !withCol) sel.push(PROJ.active);
+  // 章節編號依實際列入的頁面連續編號（未使用或未勾選的頁面不佔號）
+  const attIncl = (PROJ.attachments || []).some(a => a.inc !== false) && (!r.tabsInc || r.tabsInc[5] !== false);
+  const ORDER = [...sel, ...(withCol && typeof COLW !== 'undefined' && COLW ? [4] : []), ...(attIncl ? [5] : [])], NO = k => ORDER.indexOf(k) + 1;
   const act = PROJ.active, keep = { lang: S.lang, u: S.u, rep: S.rep };
   try {
   for (let ti = 0; ti < sel.length; ti++) {
@@ -1892,9 +1932,9 @@ async function buildReportPDF(r, progress, opts = {}) {
     else { run(); }
     if (ti > 0) L.newPage();
     starts[tix] = L.pages.length - 1;
-    const P = `${tix + 1}.`;
+    const P = `${NO(tix)}.`;
     L.font(24, 700); L.ctx.fillStyle = '#fff'; L.ctx.fillRect(L.M, L.y, L.CW, 44); L.ctx.fillStyle = '#1f4e79'; L.ctx.fillRect(L.M, L.y, L.CW, 44);
-    L.ctx.fillStyle = '#fff'; L.ctx.fillText(`${tix + 1}. ${T('tab' + tix)}`, L.M + 14, L.y + 31);
+    L.ctx.fillStyle = '#fff'; L.ctx.fillText(`${NO(tix)}. ${T('tab' + tix)}`, L.M + 14, L.y + 31);
     L.font(16); L.ctx.textAlign = 'right'; L.ctx.fillText(`${T('code_' + (S.code || 'AISC') + '_s')} · ${T(S.method)}`, L.M + L.CW - 14, L.y + 29); L.ctx.textAlign = 'left'; L.gapY(54);
     L.text(T('tabNote' + tix), { sz: 15.5, col: '#5d6670' });
     // 設計條件
@@ -1965,9 +2005,9 @@ async function buildReportPDF(r, progress, opts = {}) {
   // 第 4 頁：鋼柱報告（以 html2canvas 擷取其報告區塊）
   if (withCol && typeof COLW !== 'undefined' && COLW) {
     if (sel.length) L.newPage();
-    starts[3] = L.pages.length - 1;
+    starts[4] = L.pages.length - 1;
     L.font(24, 700); L.ctx.fillStyle = '#1f4e79'; L.ctx.fillRect(L.M, L.y, L.CW, 44);
-    L.ctx.fillStyle = '#fff'; L.ctx.fillText(`4. ${T('tab3')}`, L.M + 14, L.y + 31); L.gapY(54);
+    L.ctx.fillStyle = '#fff'; L.ctx.fillText(`${NO(4)}. ${T('tab4')}`, L.M + 14, L.y + 31); L.gapY(54);
     try {
       await COLW.loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
       const rep = COLW.document.getElementById('report'), cw = $('colWrap'), cwStyle = cw.getAttribute('style');
@@ -1976,15 +2016,15 @@ async function buildReportPDF(r, progress, opts = {}) {
       try { for (const blk of rep.querySelectorAll('.blk')) { const c = await COLW.html2canvas(blk, { scale: 2, backgroundColor: '#ffffff', logging: false }); await L.image(c, c.width, c.height); } }
       finally { rep.classList.remove('pdfmode'); cw.setAttribute('style', cwStyle); if (typeof colFit === 'function') colFit(); }
     } catch (e) { L.text(T('colPdfFail'), { sz: 17, col: '#9b3415' }); }
-    progress && progress(T('tab3'));
+    progress && progress(T('tab4'));
   }
   L.gapY(6); L.text(T('disclaimer'), { sz: 15, col: '#6b737b' });
   // 第 5 頁：附件（圖片、PDF 逐頁轉成影像）
   const atts = (PROJ.attachments || []).filter(a => a.inc !== false), subIdx = [];
-  if (atts.length && (!r.tabsInc || r.tabsInc[4] !== false)) {
-    L.newPage(); starts[4] = L.pages.length - 1;
+  if (atts.length && (!r.tabsInc || r.tabsInc[5] !== false)) {
+    L.newPage(); starts[5] = L.pages.length - 1;
     L.font(24, 700); L.ctx.fillStyle = '#1f4e79'; L.ctx.fillRect(L.M, L.y, L.CW, 44);
-    L.ctx.fillStyle = '#fff'; L.ctx.fillText(`5. ${T('tab4')}`, L.M + 14, L.y + 31); L.gapY(56);
+    L.ctx.fillStyle = '#fff'; L.ctx.fillText(`${NO(5)}. ${T('tab5')}`, L.M + 14, L.y + 31); L.gapY(56);
     const avail = () => L.H - PX(18) - L.y - 8;
     const place = (src, w, h) => { const s = Math.min(L.CW / w, avail() / h), dw = w * s, dh = h * s; L.ctx.drawImage(src, L.M + (L.CW - dw) / 2, L.y, dw, dh); L.ctx.strokeStyle = '#dde1dc'; L.ctx.strokeRect(L.M + (L.CW - dw) / 2, L.y, dw, dh); L.gapY(dh + 8); };
     for (let k = 0; k < atts.length; k++) {
@@ -2015,8 +2055,8 @@ async function buildReportPDF(r, progress, opts = {}) {
   const OFF = 2, N = L.pages.length + OFF;
   const entries = [];
   Object.keys(starts).map(Number).sort((a, b) => a - b).forEach(k => {
-    entries.push({ n: k + 1, title: T('tab' + k), page: starts[k] + OFF + 1 });
-    if (k === 4) subIdx.forEach(s => entries.push({ sub: true, title: s.title, page: s.idx + OFF + 1 }));
+    entries.push({ n: NO(k), title: T('tab' + k), page: starts[k] + OFF + 1 });
+    if (k === 5) subIdx.forEach(s => entries.push({ sub: true, title: s.title, page: s.idx + OFF + 1 }));
   });
   if (opts.dry) return { entries, total: N };
   const cover = drawCover(L, r), toc = drawTOC(L, entries, N);
@@ -2127,11 +2167,19 @@ function renderTabs() {
   const nav = $('tabs'); if (!nav) return; nav.innerHTML = '';
   PROJ.tabs.forEach((t, i) => {
     const b = el('button'); if (i === PROJ.active) b.className = 'on';
-    const w = t._worst, st = w == null ? '' : `<span class="st ${w <= 1 ? 'ok' : 'bad'}">${isFinite(w) ? fmt(w, 2) : '∞'} ${T(w <= 1 ? 'ok' : 'ng')}</span>`;
+    const w = t._worst, st = t.use === false ? `<span class="st">${T('unused')}</span>` : w == null ? '' : `<span class="st ${w <= 1 ? 'ok' : 'bad'}">${isFinite(w) ? fmt(w, 2) : '∞'} ${T(w <= 1 ? 'ok' : 'ng')}</span>`;
     b.innerHTML = `<span class="n">${i + 1}</span>${T('tab' + i)}${st}`;
     b.onclick = () => switchTab(i); nav.append(b);
   });
   $('tabNote').textContent = T('tabNote' + PROJ.active);
+  // 貫材頁：是否使用
+  const main = document.querySelector('main');
+  if (PROJ.active === 1) {
+    const l = el('label', { class: 'chk', style: 'display:inline-flex;margin-left:10px;font-weight:600;color:var(--ink)' }), c = el('input', { type: 'checkbox', id: 'useTab' });
+    c.checked = S.use !== false; c.onchange = () => { S.use = c.checked; DIRTY = true; save(); renderTabs(); updTitle(); };
+    l.append(c, ' ' + T('useWaler')); $('tabNote').append(l);
+  }
+  if (main) main.classList.toggle('unused', PROJ.active === 1 && S.use === false);
 }
 function switchTab(i) {
   if (i === PROJ.active) return;
@@ -2146,7 +2194,7 @@ function syncShared() { PROJ.tabs.forEach(t => { t.lang = S.lang; t.u = S.u; t.r
 // 重新計算所有梁頁（規範、設計法變更時）
 function recomputeAll() {
   const act = PROJ.active; syncShared();
-  for (let i = 0; i < 3; i++) { if (i === act) continue; S = PROJ.tabs[i]; RES = null; lastDC = null; try { run(); } catch (e) { } }
+  for (let i = 0; i < NBT; i++) { if (i === act) continue; S = PROJ.tabs[i]; RES = null; lastDC = null; try { run(); } catch (e) { } }
   S = PROJ.tabs[act]; RES = null; lastDC = null; renderInputs(); run(); renderTabs();
   DIRTY = true; updTitle(); save(); if (typeof colSyncCode === 'function') colSyncCode(); if (typeof TOCC !== 'undefined') TOCC = null;
 }
@@ -2168,7 +2216,7 @@ function refreshProject() {
   syncShared();
   $('lang').value = S.lang; applyStatic(); renderUnits();
   const act = PROJ.active;
-  for (let i = 0; i < 3; i++) { if (i === act) continue; S = PROJ.tabs[i]; RES = null; lastDC = null; try { run(); } catch (e) { } }
+  for (let i = 0; i < NBT; i++) { if (i === act) continue; S = PROJ.tabs[i]; RES = null; lastDC = null; try { run(); } catch (e) { } }
   S = PROJ.tabs[act]; RES = null; lastDC = null; renderInputs(); run(); renderTabs();
   LOADING = false; DIRTY = false; buildFileMenu(); updTitle(); save();
 }
@@ -2200,13 +2248,13 @@ $('fileIn').onchange = async e => {
     const okModel = m => m && Array.isArray(m.spans) && m.spans.length && Array.isArray(m.supports) && m.supports.length === m.spans.length + 1;
     const nm = f.name.replace(/\.json$/i, '');
     if (o && o.app === 'continuous-beam' && o.project && Array.isArray(o.project.tabs)) {
-      const tabs = o.project.tabs; if (tabs.length !== 3 || !tabs.every(okModel)) throw new Error(T('badFormat'));
+      const mg = migrateTabs(o.project.tabs, o.project.active || 0), tabs = mg.tabs; if (tabs.length !== NBT || !tabs.every(okModel)) throw new Error(T('badFormat'));
       const sh = { lang: S.lang, u: o.project.u || tabs[0].u || S.u, rep: o.project.rep || tabs[0].rep, code: o.project.code || tabs[0].code || 'AISC', method: o.project.method || tabs[0].method || 'ASD' };
       const wasCol = PROJ.col;
-      PROJ = { active: Math.min(2, Math.max(0, o.project.active || 0)), fileName: nm, tabs: tabs.map(t => normTab(t, sh)), column: o.project.column || null, col: wasCol, attachments: Array.isArray(o.project.attachments) ? o.project.attachments : [] };
+      PROJ = { active: mg.active, fileName: nm, tabs: tabs.map(t => normTab(t, sh)), column: o.project.column || null, col: wasCol, attachments: Array.isArray(o.project.attachments) ? o.project.attachments : [] };
       S = PROJ.tabs[PROJ.active]; refreshProject(); if (typeof colRestore === 'function') { colRestore(PROJ.column); renderTabs(); } toast(T('openOk', { f: f.name }));
     } else {
-      if (o && o.app === 'steel-column-design' && typeof colRestore === 'function') { PROJ.column = o; colRestore(o); DIRTY = false; save(); renderTabs(); updTitle(); switchTab(3); toast(T('openOk', { f: f.name })); return; }
+      if (o && o.app === 'steel-column-design' && typeof colRestore === 'function') { PROJ.column = o; colRestore(o); DIRTY = false; save(); renderTabs(); updTitle(); switchTab(4); toast(T('openOk', { f: f.name })); return; }
       const m = o && o.app === 'continuous-beam' ? o.model : o;
       if (!okModel(m)) throw new Error(m && Array.isArray(m.spans) ? T('badSupports') : T('badFormat'));
       const ns = normTab(m, S); PROJ.tabs[PROJ.active] = ns; S = ns; if (!PROJ.fileName) PROJ.fileName = nm;
@@ -2218,7 +2266,7 @@ async function saveFile() {
   const base_ = (PROJ.fileName || (S.rep && S.rep.name) || 'formwork-shoring').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'formwork-beams';
   const fname = base_ + '.json';
   const strip = t => { const { _open, _worst, lang, u, rep, fileName, ...m } = t; return m; };
-  const data = JSON.stringify({ app: 'continuous-beam', format: 2, savedAt: new Date().toISOString(), note: 'Internal values in SI: m, kN, mm, MPa, GPa. tabs: 0 panel, 1 secondary joist, 2 primary bearer; column: steel column page (its own units)',
+  const data = JSON.stringify({ app: 'continuous-beam', format: 3, savedAt: new Date().toISOString(), note: 'Internal values in SI: m, kN, mm, MPa, GPa. tabs: 0 panel, 1 waler, 2 secondary joist, 3 primary bearer; column: steel column page (its own units)',
     project: { active: PROJ.active, u: S.u, rep: S.rep, code: S.code, method: S.method, tabs: PROJ.tabs.map(strip), column: (typeof COLW !== 'undefined' && COLW) ? COLW.collectState() : (PROJ.column || null), attachments: (PROJ.attachments || []).map(({ id, name, title, kind, mime, size, data, inc, pages }) => ({ id, name, title, kind, mime, size, data, inc, pages })) } }, null, 2);
   window.__lastSave = data;
   if (!DL) { toast(T('dlUnavail'), true); return false; }
@@ -2306,9 +2354,9 @@ function addReactionButton() {
   const d = COLW.document, anchor = d.getElementById('PD'); if (!anchor || d.getElementById('btnReac')) return;
   const b = d.createElement('button'); b.id = 'btnReac'; b.className = 'btn full'; b.style.marginTop = '8px';
   const card = anchor.closest('.card') || anchor.parentElement; card.appendChild(b);
-  const setLab = () => b.textContent = '⬇ ' + T('useReaction') + '（' + T('tab2') + '）'; setLab(); b._setLab = setLab;
+  const setLab = () => b.textContent = '⬇ ' + T('useReaction') + '（' + T('tab3') + '）'; setLab(); b._setLab = setLab;
   b.onclick = () => {
-    const keep = S, tb = PROJ.tabs[2];
+    const keep = S, tb = PROJ.tabs[3];
     S = tb; let rD = 0, rL = 0;
     try {
       const model = { spans: tb.spans.map(s => ({ L: +s.L, EI: EIof(s) })), supports: tb.supports.map(s => ({ type: s.type, k: +s.k || 0, settle: +s.settle || 0 })),
@@ -2336,14 +2384,14 @@ renderTabs = function () {
   if (PROJ.col) nav.querySelectorAll('button').forEach(b => b.classList.remove('on'));
   const st = COLW ? colStatus() : null;
   const b = el('button'); if (PROJ.col) b.className = 'on';
-  b.innerHTML = `<span class="n">4</span>${T('tab3')}${st ? `<span class="st ${st.ok ? 'ok' : 'bad'}">${fmt(st.ratio, 2)} ${T(st.ok ? 'ok' : 'ng')}</span>` : ''}`;
-  b.onclick = () => switchTab(3); nav.append(b);
-  if (PROJ.col) $('tabNote').textContent = T('tabNote3');
+  b.innerHTML = `<span class="n">5</span>${T('tab4')}${st ? `<span class="st ${st.ok ? 'ok' : 'bad'}">${fmt(st.ratio, 2)} ${T(st.ok ? 'ok' : 'ng')}</span>` : ''}`;
+  b.onclick = () => switchTab(4); nav.append(b);
+  if (PROJ.col) $('tabNote').textContent = T('tabNote4');
   const rb = COLW && COLW.document.getElementById('btnReac'); if (rb && rb._setLab) rb._setLab();
 };
 const _switchTab = switchTab;
 switchTab = function (i) {
-  if (i === 3) {
+  if (i === 4) {
     if (PROJ.col) return; PROJ.col = true; closeMenu();
     document.querySelector('main').style.display = 'none'; $('colWrap').style.display = 'block';
     colSyncLang(); colSyncUnits(); colSyncCode(); colFit(); renderTabs(); save(); window.scrollTo({ top: 0 }); return;
@@ -2394,7 +2442,7 @@ async function renderTOC(force) {
   pageWrap.append(el('div', { class: 'pnote' }, T('tocNote')));
   const bar = el('div', { class: 'tocbar' });
   const tb = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px 16px' });
-  [0, 1, 2, 3, 4].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); TOCC = null; renderTOC(true); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}`); tb.append(l); });
+  [0, 1, 2, 3, 4, 5].forEach(i => { const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox' }); c.checked = r.tabsInc[i] !== false; c.onchange = () => { r.tabsInc[i] = c.checked; save(); TOCC = null; renderTOC(true); }; l.append(c, ` ${i + 1}. ${T('tab' + i)}${i < NBT && PROJ.tabs[i].use === false ? `（${T('unused')}）` : ''}`); tb.append(l); });
   const btn = el('button', { class: 'pri' }, '↻ ' + T('tocRecalc')); btn.onclick = () => { TOCC = null; renderTOC(true); };
   bar.append(tb, btn); pageWrap.append(bar);
   const paper = el('div', { class: 'paper toc' }); paper.append(el('div', { class: 'ttitle' }, T('tocTab')), el('div', { class: 'cbar sm' }));
@@ -2430,7 +2478,7 @@ switchTab = function (i) {
     if (i === 'cover') renderCover(); else renderTOC(!TOCC);
     window.scrollTo({ top: 0 }); return;
   }
-  if (PROJ.special) { PROJ.special = null; const wasCol = PROJ.col; PROJ.col = false; showArea(); if (wasCol && i === 3) { /* 回到鋼柱 */ } }
+  if (PROJ.special) { PROJ.special = null; const wasCol = PROJ.col; PROJ.col = false; showArea(); if (wasCol && i === 4) { /* 回到鋼柱 */ } }
   _switchTab3(i); showArea(); renderTabs();
 };
 // 有任何修改時，目錄頁碼需重算
@@ -2542,7 +2590,7 @@ renderTabs = function () {
   _renderTabs4();
   const nav = $('tabs'), n = (PROJ.attachments || []).length;
   const b = el('button'); if (PROJ.special === 'att') b.className = 'on';
-  b.innerHTML = `<span class="n">5</span>${T('tab4')}${n ? `<span class="st cnt">${n}</span>` : ''}`; b.onclick = () => switchTab('att'); nav.append(b);
+  b.innerHTML = `<span class="n">6</span>${T('tab5')}${n ? `<span class="st cnt">${n}</span>` : ''}`; b.onclick = () => switchTab('att'); nav.append(b);
 };
 const _switchTab4 = switchTab;
 switchTab = function (i) {
@@ -2555,6 +2603,187 @@ const _refreshProject4 = refreshProject; refreshProject = function () { PROJ.att
 idbGet('attachments').then(v => { if (Array.isArray(v) && !PROJ.attachments.length) { PROJ.attachments = v; renderTabs(); if (PROJ.special === 'att') renderAttach(); } });
 if (PROJ.special === 'att') renderAttach();
 renderTabs();
+</script>
+<script>// ===================== 對拉螺桿抗拉強度檢核（主墊條頁）=====================
+// 資料來源：SUCOOT 型錄 Formwork Parts p.8 Tie Rod、p.9–10 Wing Nut（Max. Load、Safety Load，單位 kgf）
+const KGF = 9.80665e-3;   // kgf → kN
+const THREADS = {
+  B10: 'Ø10mm Ball Screw 6 TPI', B12: 'Ø12mm Ball Screw 6 TPI', B17: 'Ø17mm Ball Screw 4 TPI',
+  B21: 'Ø21mm Ball Screw 4 TPI', B26: 'Ø26mm Ball Screw 4 TPI', D17: 'Ø17mm D Thread P:10mm', D23: 'Ø23mm D Thread P:10mm',
+};
+const TIE_RODS = [
+  { id: 'BS84-10', model: 'BS-84', th: 'B10', mat: 'AISI 1045', max: 4800, safe: 2400 },
+  { id: 'BS84-12', model: 'BS-84', th: 'B12', mat: 'AISI 1045', max: 5600, safe: 2800 },
+  { id: 'BS84-17', model: 'BS-84', th: 'B17', mat: 'AISI 1045', max: 14500, safe: 7200 },
+  { id: 'BS84-21', model: 'BS-84', th: 'B21', mat: 'AISI 1045', max: 23320, safe: 11600 },
+  { id: 'BS84-26', model: 'BS-84', th: 'B26', mat: 'SCM 440', max: 43300, safe: 21650 },
+  { id: 'TR81-17', model: 'TR-81', th: 'D17', mat: 'AISI 1045', max: 14500, safe: 7200 },
+];
+const WING_NUTS = [
+  { id: 'WN91-17B', model: 'WN-91', th: 'B17', base: 77, max: 19750, safe: 9800 },
+  { id: 'WN91-17D', model: 'WN-91', th: 'D17', base: 77, max: 20600, safe: 10300 },
+  { id: 'WN92-17B', model: 'WN-92', th: 'B17', max: 19750, safe: 9800 },
+  { id: 'WN92F-21B', model: 'WN-92F', th: 'B21', max: 22600, safe: 11000 },
+  { id: 'WN92P-17D', model: 'WN-92P', th: 'D17', plate: '118×118×t10', base: 118, max: 19900, safe: 9950, art: 15 },
+  { id: 'WN92P-17B', model: 'WN-92P', th: 'B17', plate: '118×118×t10', base: 118, max: 18600, safe: 9300, art: 15 },
+  { id: 'WN92P-21B', model: 'WN-92P', th: 'B21', plate: '118×118×t10', base: 118, max: 24700, safe: 12350, art: 6 },
+  { id: 'WN120P-17D', model: 'WN-120P', th: 'D17', base: 120, max: 20800, safe: 10400, art: 13 },
+  { id: 'WN92H-17D', model: 'WN-92H', th: 'D17', max: 20390, safe: 10000 },
+  { id: 'WN92H-23D', model: 'WN-92H', th: 'D23', max: 32000, safe: 16000 },
+  { id: 'WN72P-17D', model: 'WN-72P', th: 'D17', max: 20635, safe: 10300 },
+  { id: 'WN94-17D', model: 'WN-94', th: 'D17', base: 100, max: 20200, safe: 10100 },
+  { id: 'WN94-17B', model: 'WN-94', th: 'B17', base: 100, max: 19300, safe: 9600 },
+  { id: 'WN94B-23D', model: 'WN-94B', th: 'D23', base: 130, max: 32000, safe: 16000 },
+  { id: 'WN94M-17D', model: 'WN-94M', th: 'D17', base: 90, max: 18500, safe: 9250 },
+  { id: 'WN94P-17D', model: 'WN-94P', th: 'D17', base: 130, max: 20200, safe: 10100 },
+  { id: 'WN703-17D', model: 'WN-703', th: 'D17', base: 70, max: 20000, safe: 10000 },
+  { id: 'WN903R-17D', model: 'WN-903R', th: 'D17', base: 90, max: 20500, safe: 10250 },
+  { id: 'WN103-17D', model: 'WN-103', th: 'D17', base: 100, max: 20000, safe: 10000 },
+  { id: 'WN95-10B', model: 'WN-95', th: 'B10', max: 4500, safe: 2200 },
+  { id: 'WN95-12B', model: 'WN-95', th: 'B12', max: 6000, safe: 3000 },
+  { id: 'WN95B-12B', model: 'WN-95B', th: 'B12', base: 100, max: 6450, safe: 3225 },
+  { id: 'WN95G-10B', model: 'WN-95G', th: 'B10', base: 80, max: 4400, safe: 2200 },
+  { id: 'WN95G-12B', model: 'WN-95G', th: 'B12', base: 80, max: 6300, safe: 3100 },
+];
+Object.assign(DICT, {
+  tieTitle: ['對拉螺桿抗拉強度檢核', 'Tie rod tensile strength check', 'ตรวจสอบกำลังรับแรงดึงของเหล็กยึดแบบ', 'Pemeriksaan kuat tarik tie rod'],
+  tieOn: ['進行對拉螺桿抗拉強度檢核（螺桿拉力 = 主墊條最大支承反力）', 'Check tie rod tension (tie force = primary bearer maximum support reaction)', 'ตรวจสอบแรงดึงเหล็กยึดแบบ (แรงดึง = แรงปฏิกิริยาสูงสุดของคานรองหลัก)', 'Periksa tarik tie rod (gaya = reaksi tumpuan maks. gelagar utama)'],
+  tieRod: ['對拉螺桿（Tie Rod）', 'Tie rod', 'เหล็กยึดแบบ (Tie Rod)', 'Tie rod'],
+  tieNut: ['蝶型螺帽（Wing Nut）', 'Wing nut', 'น็อตปีก (Wing Nut)', 'Mur sayap (Wing Nut)'],
+  tieAuto: ['自動選擇合適組合', 'Pick a suitable combination', 'เลือกชุดที่เหมาะสมอัตโนมัติ', 'Pilih kombinasi yang sesuai'],
+  tieAutoOk: ['已選擇安全荷重足夠的最小組合：{r} ＋ {n}', 'Selected the smallest adequate combination: {r} + {n}', 'เลือกแล้ว: {r} + {n}', 'Dipilih: {r} + {n}'],
+  tieNone: ['型錄中沒有安全荷重足夠的組合（T = {t}），請縮小主墊條支承間距或改用其他材料。', 'No catalog combination has enough safety load (T = {t}); reduce the support spacing or use other parts.', 'ไม่มีชุดใดรับแรงได้เพียงพอ (T = {t})', 'Tidak ada kombinasi yang cukup (T = {t}).'],
+  tieNoRes: ['請先完成主墊條分析，才能自動選擇。', 'Run the primary bearer analysis first.', 'กรุณาวิเคราะห์คานรองหลักก่อน', 'Jalankan analisis gelagar utama dahulu.'],
+  tieSafe: ['安全荷重', 'safety load', 'น้ำหนักปลอดภัย', 'beban aman'],
+  tieMax: ['最大荷重', 'max. load', 'น้ำหนักสูงสุด', 'beban maks.'],
+  tieNote: ['資料來源：SUCOOT 型錄 Tie Rod、Wing Nut 表（安全荷重 = 最大荷重 ÷ 2，安全係數 2.0）。螺帽清單只列出與所選螺桿螺紋相同者。螺桿拉力取容許應力（ASD）載重組合下，主墊條各支承反力絕對值之最大者（每一支承一支螺桿）。', 'Data: SUCOOT catalog Tie Rod and Wing Nut tables (safety load = max. load ÷ 2, factor of safety 2.0). Only wing nuts with the same thread as the selected tie rod are listed. Tie force = largest absolute primary-bearer support reaction under the ASD load combinations (one tie per support).', '', ''],
+  tieName: ['對拉螺桿', 'Tie rod', 'เหล็กยึดแบบ', 'Tie rod'],
+  chkTieRod: ['螺桿抗拉（{u}）', 'Tie rod tension ({u})', 'แรงดึงเหล็กยึด ({u})', 'Tarik tie rod ({u})'],
+  chkTieNut: ['螺帽承載（{u}）', 'Wing nut capacity ({u})', 'กำลังน็อตปีก ({u})', 'Kapasitas mur sayap ({u})'],
+  tieAt: ['支承 {j}', 'support {j}', 'จุดรองรับ {j}', 'tumpuan {j}'],
+  tieLRFD: ['本專案採 LRFD，但型錄提供的是安全荷重（容許荷重），故螺桿檢核改採 ASD 載重組合。', 'The project uses LRFD, but the catalog gives safety (allowable) loads, so the tie check uses the ASD load combinations.', '', ''],
+  tieBase: ['型錄註記：底座 Ø ≥ 100 mm 時雙主墊條間距不大於 50 mm；底座 Ø < 100 mm 時不大於 35 mm。', 'Catalog note: base Ø ≥ 100 mm — double girder spacing ≤ 50 mm; base Ø < 100 mm — ≤ 35 mm.', '', ''],
+  tieDet1: ['螺桿：{n}，{m}；最大荷重 {x} kgf，安全荷重 {s} kgf = {k}', 'Tie rod: {n}, {m}; max. load {x} kgf, safety load {s} kgf = {k}', '', ''],
+  tieDet2: ['螺帽：{n}{b}；最大荷重 {x} kgf，安全荷重 {s} kgf = {k}', 'Wing nut: {n}{b}; max. load {x} kgf, safety load {s} kgf = {k}', '', ''],
+  tieDet3: ['螺桿拉力 T = 最大支承反力 = {t}（{c}，{j}）', 'Tie force T = max. support reaction = {t} ({c}, {j})', '', ''],
+  tieDet4: ['對最大荷重之安全係數 FS = {x} ÷ T = {fs}', 'Factor of safety on max. load FS = {x} ÷ T = {fs}', '', ''],
+});
+
+const tieRod = id => TIE_RODS.find(r => r.id === id) || TIE_RODS[2];
+const tieNut = id => WING_NUTS.find(n => n.id === id) || null;
+const nutsFor = th => WING_NUTS.filter(n => n.th === th);
+const rodName = r => `${r.model} ${THREADS[r.th]}`;
+const nutName = n => `${n.model} ${THREADS[n.th]}`;
+const kgfTxt = v => v.toLocaleString('en-US');
+
+// 拉力：ASD 載重組合下，各支承反力絕對值之最大者
+function tieDemand() {
+  if (!RES || !RES.cases) return null;
+  const key = (S.code === 'TW' ? 'TW-' : '') + 'ASD';
+  const combos = (S.combos && S.combos[key]) || PRESET[key];
+  let best = { T: 0, j: -1, label: '' };
+  combos.forEach(f => {
+    const vs = [f];
+    if (S.bothWE && (f.W || f.E)) vs.push({ ...f, W: -(f.W || 0), E: -(f.E || 0) });
+    vs.forEach(v => S.supports.forEach((sp, j) => {
+      if (sp.type === 'free') return;
+      let R = 0; CASES.forEach(c => { if (v[c] && RES.cases[c]) R += v[c] * RES.cases[c].Ry[j]; });
+      if (Math.abs(R) > best.T + 1e-12) best = { T: Math.abs(R), j, label: comboLabel(v) };
+    }));
+  });
+  return best;
+}
+
+function tieCheckHTML() {
+  const t = S.tie, rod = tieRod(t.rod), nut = tieNut(t.nut) && tieNut(t.nut).th === rod.th ? tieNut(t.nut) : nutsFor(rod.th)[0];
+  const d = tieDemand(); if (!d) return null;
+  const items = [[T('chkTieRod', { u: un('F') }), rod.safe * KGF]];
+  if (nut) items.push([T('chkTieNut', { u: un('F') }), nut.safe * KGF]);
+  let worst = 0, rows = '';
+  const gov = d.j >= 0 ? `${d.label} · ${T('tieAt', { j: letter(d.j) })}` : '';
+  items.forEach(([name, cap]) => {
+    const r = cap > 0 ? d.T / cap : Infinity; worst = Math.max(worst, r); const ok = r <= 1 + 1e-9;
+    const col = r <= 0.8 ? '#2f7d4f' : r <= 1 ? '#c58b0f' : '#b4441f';
+    rows += `<tr><td class="t">${name}${gov && d.T > 1e-9 ? `<div class="muted" style="font-size:11px;font-family:var(--mono)">${T('govern')}: ${gov}</div>` : ''}</td><td>T = ${fq('F', d.T)}</td><td>Ta = ${fq('F', cap)}</td><td>${isFinite(r) ? fmt(r, 3) : '∞'}<div class="bar"><i style="width:${Math.min(100, r * 100)}%;background:${col}"></i></div></td><td class="${ok ? 'ok' : 'bad'}">${T(ok ? 'ok' : 'ng')}</td></tr>`;
+  });
+  const ng = worst > 1 + 1e-9;
+  const head = `<tr><th>${T('item')}</th><th>${T('dmd')}</th><th>${T('cap')}</th><th>${T('ratio')}</th><th>${T('result')}</th></tr>`;
+  const minMax = Math.min(rod.max, nut ? nut.max : Infinity);
+  const det = [
+    T('tieDet1', { n: rodName(rod), m: rod.mat, x: kgfTxt(rod.max), s: kgfTxt(rod.safe), k: `${fq('F', rod.safe * KGF)} ${un('F')}` }),
+    nut ? T('tieDet2', { n: nutName(nut), b: nut.plate ? `，底板 ${nut.plate} mm` : nut.base ? `，底座 Ø${nut.base} mm` : '', x: kgfTxt(nut.max), s: kgfTxt(nut.safe), k: `${fq('F', nut.safe * KGF)} ${un('F')}` }) : '',
+    T('tieDet3', { t: `${fq('F', d.T)} ${un('F')}`, c: d.label || '—', j: d.j >= 0 ? T('tieAt', { j: letter(d.j) }) : '—' }),
+    T('tieDet4', { x: `${kgfTxt(minMax)} kgf (${fq('F', minMax * KGF)} ${un('F')})`, fs: d.T > 0 ? fmt(minMax * KGF / d.T, 2) : '∞' }),
+  ].filter(Boolean);
+  const warns = [];
+  if (S.method === 'LRFD') warns.push(T('tieLRFD'));
+  if (nut && nut.base) warns.push(T('tieBase'));
+  let html = `<div class="dspan"><div class="dh"><b>${T('tieName')}</b><span class="muted">${rodName(rod)}${nut ? ' ＋ ' + nutName(nut) : ''} · ASD</span><span class="badge ${ng ? 'bad' : 'ok'}">${T(ng ? 'ng' : 'ok')}</span></div>`;
+  html += `<div class="tblwrap"><table class="tbl">${head}${rows}</table></div>`;
+  if (warns.length) html += `<div class="warn">⚠ ${warns.join('<br>⚠ ')}</div>`;
+  html += `<details><summary>${T('details')}</summary><div>${det.join('<br>')}</div></details></div>`;
+  return { html, worst };
+}
+
+// 設計檢核結果之後加上螺桿檢核（主墊條頁、已勾選時）
+const _renderDC_tie = renderDC;
+renderDC = function () {
+  _renderDC_tie();
+  if (!lastDC || S !== PROJ.tabs[3] || !S.tie || !S.tie.on || !RES) return;
+  const res = tieCheckHTML(); if (!res) return;
+  $('designOut').insertAdjacentHTML('beforeend', res.html);
+  S._worst = Math.max(S._worst || 0, res.worst);
+  const c = $('dcCard'), w = S._worst;
+  if (c) c.innerHTML = `<div class="k">${T('dcMax')} (${S.method})</div><div class="v" style="color:${w <= 1 ? '#2f7d4f' : '#b4441f'}">${isFinite(w) ? fmt(w, 3) : '∞'}</div><div class="s">${T(w <= 1 ? 'ok' : 'ng')}</div>`;
+  if (typeof renderTabs === 'function') renderTabs();
+};
+
+// 輸入卡片：主墊條頁最後
+function renderTiePanel() {
+  const box = $('tiePanel'); if (!box) return;
+  if (S !== PROJ.tabs[3] || PROJ.col || PROJ.special) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const t = S.tie;
+  box.innerHTML = `<h2><span class="num">7</span><span>${T('tieTitle')}</span></h2>`;
+  const on = el('label', { class: 'chk' }), cb = el('input', { type: 'checkbox', id: 'tieOn' });
+  cb.checked = !!t.on; cb.onchange = () => { t.on = cb.checked; renderTiePanel(); schedule(); };
+  on.append(cb, ' ' + T('tieOn')); box.append(on);
+  if (!t.on) return;
+  const rod = tieRod(t.rod); t.rod = rod.id;
+  let nuts = nutsFor(rod.th); if (!nuts.some(n => n.id === t.nut)) t.nut = nuts.length ? nuts[0].id : '';
+  const g = el('div', { class: 'g mt' });
+  const sr = el('select', { id: 'tieRodSel' });
+  TIE_RODS.forEach(r => { const o = el('option', { value: r.id }); o.textContent = `${rodName(r)}（${r.mat}）— ${T('tieSafe')} ${kgfTxt(r.safe)} kgf ≈ ${fq('F', r.safe * KGF)} ${un('F')}`; sr.append(o); });
+  sr.value = t.rod; sr.onchange = () => { t.rod = sr.value; renderTiePanel(); schedule(); };
+  const sn = el('select', { id: 'tieNutSel' });
+  nuts.forEach(n => { const o = el('option', { value: n.id }); o.textContent = `${nutName(n)}${n.plate ? ` · ${n.plate}` : n.base ? ` · Ø${n.base}` : ''} — ${T('tieSafe')} ${kgfTxt(n.safe)} kgf ≈ ${fq('F', n.safe * KGF)} ${un('F')}`; sn.append(o); });
+  sn.value = t.nut; sn.onchange = () => { t.nut = sn.value; schedule(); };
+  g.append(field(T('tieRod'), sr), field(T('tieNut'), sn)); box.append(g);
+  const ab = el('button', { id: 'tieAuto', style: 'margin-top:8px' }, T('tieAuto'));
+  ab.onclick = () => {
+    const d = tieDemand(); if (!d) { toast(T('tieNoRes'), true); return; }
+    let best = null;
+    TIE_RODS.forEach(r => nutsFor(r.th).forEach(n => {
+      const cap = Math.min(r.safe, n.safe) * KGF;
+      if (cap + 1e-9 >= d.T && (!best || cap < best.cap - 1e-9 || (Math.abs(cap - best.cap) < 1e-9 && r.safe < best.r.safe))) best = { r, n, cap };
+    }));
+    if (!best) { toast(T('tieNone', { t: `${fq('F', d.T)} ${un('F')}` }), true); return; }
+    t.rod = best.r.id; t.nut = best.n.id; renderTiePanel(); schedule();
+    toast(T('tieAutoOk', { r: rodName(best.r), n: nutName(best.n) }));
+  };
+  box.append(ab, el('div', { class: 'note mt' }, T('tieNote')));
+}
+const _renderInputs_tie = renderInputs;
+renderInputs = function () { _renderInputs_tie(); renderTiePanel(); };
+const _switchTab_tie = switchTab;
+switchTab = function (i) { _switchTab_tie(i); renderTiePanel(); };
+$('lang').addEventListener('change', renderTiePanel);
+renderTiePanel();
+// 載入時若主墊條頁已啟用螺桿檢核，重新計算其檢核狀態（分頁標籤顯示用）
+if (PROJ.active !== 3 && PROJ.tabs[3].tie && PROJ.tabs[3].tie.on) {
+  const keepS = S; S = PROJ.tabs[3]; RES = null; lastDC = null; try { run(); } catch (e) { }
+  S = keepS; RES = null; lastDC = null; run();
+}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="auth.js"></script>

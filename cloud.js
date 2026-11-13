@@ -88,6 +88,11 @@
   const CASES_ = ['D', 'L', 'Lr', 'W', 'E'];
   const CASE_COL = { D: 'f_d', L: 'f_l', Lr: 'f_lr', W: 'f_w', E: 'f_e' };
 
+  // 分頁編號：網頁 0 面板、1 貫材、2 次墊條、3 主墊條；
+  // 資料庫沿用舊編號 0 面板、1 次墊條、2 主墊條，貫材為 3（舊專案不受影響）
+  const DB_IDX = [0, 3, 1, 2];   // 網頁 → 資料庫
+  const APP_IDX = [0, 2, 3, 1];  // 資料庫 → 網頁
+
   const conv = (v, ty) => ty === 'n' ? num(v) : ty === 'i' ? int(v) : ty === 'b' ? !!v : (v == null ? null : String(v));
 
   function columnState() {
@@ -99,7 +104,7 @@
     const u = S.u || {}, r = S.rep || {};
     return {
       file_name: name,
-      active_tab: Math.min(2, Math.max(0, PROJ.active || 0)),
+      active_tab: DB_IDX[Math.min(3, Math.max(0, PROJ.active || 0))],
       design_code: S.code === 'AISC' ? 'AISC' : 'TW',
       design_method: S.method === 'LRFD' ? 'LRFD' : 'ASD',
       lang: ['zh', 'en', 'th', 'id'].includes(S.lang) ? S.lang : 'zh',
@@ -115,7 +120,9 @@
   function tabRow(projectId, t, i) {
     const dl = t.dl || {}, sl = t.slab || {};
     return {
-      project_id: projectId, tab_index: i,
+      project_id: projectId, tab_index: DB_IDX[i],
+      in_use: t.use !== false,
+      tie_on: !!(t.tie && t.tie.on), tie_rod: (t.tie && t.tie.rod) || null, tie_nut: (t.tie && t.tie.nut) || null,
       view: t.view || 'env', flip_m: !!t.flipM, both_we: t.bothWE !== false,
       defl_l_ratio_live: num(dl.L) ?? 360, defl_l_ratio_total: num(dl.T) ?? 240,
       defl_mode: ['ratio', 'abs', 'both'].includes(dl.mode) ? dl.mode : 'ratio', defl_abs_mm: num(dl.abs) ?? 3,
@@ -203,7 +210,7 @@
       must(await sb.from('column_designs').delete().eq('project_id', id));
       const tabs = must(await sb.from('beam_tabs').insert(PROJ.tabs.map((t, i) => tabRow(id, t, i))).select('id,tab_index'));
       const all = { spans: [], supports: [], point_loads: [], distributed_loads: [], moment_loads: [], load_combinations: [] };
-      tabs.forEach(tb => { const c = childRows(tb.id, PROJ.tabs[tb.tab_index]); for (const k in all) all[k].push(...c[k]); });
+      tabs.forEach(tb => { const c = childRows(tb.id, PROJ.tabs[APP_IDX[tb.tab_index]]); for (const k in all) all[k].push(...c[k]); });
       for (const k in all) if (all[k].length) must(await sb.from(k).insert(all[k]));
       const col = columnRow(id, columnState());
       if (col) must(await sb.from('column_designs').insert(col));
@@ -251,7 +258,9 @@
       const attR = must(await sb.from('attachments').select('*').eq('project_id', id).order('idx'));
 
       const by = (arr, tid) => arr.filter(r => r.tab_id === tid);
-      const outTabs = tabs.map(t => {
+      const byIdx = {};
+      tabs.forEach(t => { byIdx[t.tab_index] = buildTab(t); });
+      function buildTab(t) {
         const combosObj = {};
         COMBO_SETS.forEach(set => {
           combosObj[set] = by(combos, t.id).filter(c => c.combo_set === set).sort((a, b) => a.idx - b.idx).map(c => {
@@ -273,8 +282,13 @@
           dists: by(dists, t.id).map(r => { const d = { x1: +r.x1_m, x2: +r.x2_m, w1: +r.w1_kn_m, w2: +r.w2_kn_m, c: r.load_case }; if (r.is_generated) d.gen = true; return d; }),
           moments: by(moms, t.id).map(r => ({ x: +r.x_m, M: +r.m_knm, c: r.load_case })),
           combos: combosObj,
+          use: t.in_use !== false,
+          ...(t.tie_rod || t.tie_on ? { tie: { on: !!t.tie_on, ...(t.tie_rod ? { rod: t.tie_rod } : {}), ...(t.tie_nut ? { nut: t.tie_nut } : {}) } } : {}),
         };
-      });
+      }
+      // 有貫材（資料庫編號 3）就排成四頁；舊專案維持三頁，開啟時由網頁自動插入貫材頁
+      const outTabs = byIdx[3] ? [byIdx[0], byIdx[3], byIdx[1], byIdx[2]] : [byIdx[0], byIdx[1], byIdx[2]];
+      const outActive = byIdx[3] ? (APP_IDX[p.active_tab] ?? 0) : p.active_tab;
 
       const atts = [];
       for (const a of attR) {
@@ -290,7 +304,7 @@
       const obj = {
         app: 'continuous-beam', format: 2,
         project: {
-          active: p.active_tab, u: { F: p.unit_force, L: p.unit_length, d: p.unit_dim, s: p.unit_stress },
+          active: outActive, u: { F: p.unit_force, L: p.unit_length, d: p.unit_dim, s: p.unit_stress },
           rep, code: p.design_code, method: p.design_method,
           tabs: outTabs, column: columnState2Obj(colR), attachments: atts,
         },
