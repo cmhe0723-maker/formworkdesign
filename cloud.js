@@ -5,22 +5,17 @@
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'https://htmcplckxtntrjiqumgo.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_zgD1afHGIGqzQvHjrbp1yA_EkoQvj3h';
-  const BUCKET = 'attachments';
+    const BUCKET = 'attachments';
 
   const TXT = {
     cloud:      ['☁ 雲端', '☁ Cloud'],
     cloudTitle: ['雲端專案', 'Cloud projects'],
     menuOpen:   ['☁ 雲端專案…', '☁ Cloud projects…'],
     menuSave:   ['☁ 儲存到雲端', '☁ Save to cloud'],
-    email:      ['電子郵件', 'Email'],
-    password:   ['密碼', 'Password'],
-    signIn:     ['登入', 'Sign in'],
-    signUp:     ['註冊', 'Sign up'],
-    signOut:    ['登出', 'Sign out'],
     signedAs:   ['已登入：', 'Signed in as '],
-    signUpOk:   ['註冊成功，請到信箱點確認連結後再登入。', 'Signed up. Confirm via the email link, then sign in.'],
+    needLogin:  ['請先登入。', 'Please sign in first.'],
+    allProj:    ['所有使用者的專案（管理員）', 'All users\' projects (admin)'],
+    owner:      ['建立者：', 'Owner: '],
     save:       ['儲存目前專案', 'Save current project'],
     saveAs:     ['另存為新專案', 'Save as new project'],
     open:       ['開啟', 'Open'],
@@ -48,15 +43,17 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const notify = (m, bad) => (typeof toast === 'function' ? toast(m, bad) : alert(m));
 
-  if (!window.supabase || !window.supabase.createClient) {
-    console.warn('supabase-js not loaded');
+  // 共用 auth.js 建立的連線與登入狀態
+  const sb = window.formworkSB;
+  if (!sb) {
+    console.warn('formworkSB not available');
     window.addEventListener('load', () => addHeaderButton(() => notify(tr('noLib'), true)));
     return;
   }
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  let USER = null;
-  sb.auth.getSession().then(({ data }) => { USER = data.session ? data.session.user : null; });
-  sb.auth.onAuthStateChange((_e, session) => { USER = session ? session.user : null; });
+  let USER = null, IS_ADMIN = false;
+  const syncAuth = () => { const a = window.formworkAuth || {}; USER = a.user || null; IS_ADMIN = !!a.isAdmin; };
+  syncAuth();
+  document.addEventListener('fw-auth', syncAuth);
 
   const must = r => { if (r.error) throw r.error; return r.data; };
   const num = v => (v === '' || v == null || !isFinite(+v) ? null : +v);
@@ -184,7 +181,7 @@
 
   // ---------------- 儲存 ----------------
   async function cloudSave(asNew) {
-    if (!USER) { openDialog(); return false; }
+    if (!USER) { notify(tr('needLogin'), true); return false; }
     let name = (PROJ.fileName || (S.rep && S.rep.name) || '').trim();
     if (!name || asNew) {
       const n = prompt(tr('askName'), name || tr('untitled'));
@@ -313,13 +310,17 @@
   }
 
   // ---------------- 刪除 ----------------
-  async function cloudDelete(id, name) {
+  async function cloudDelete(id, name, ownerId) {
+    if (!IS_ADMIN) return false;
     if (!confirm(tr('confirmDel', { f: name }))) return false;
     try {
-      const folder = `${USER.id}/${id}`;
-      const files = await listFolder(folder);
-      if (files.length) await sb.storage.from(BUCKET).remove(files.map(f => `${folder}/${f}`));
-      must(await sb.from('projects').delete().eq('id', id));
+      const folder = `${ownerId}/${id}`;
+      const rows = must(await sb.from('attachments').select('storage_path').eq('project_id', id));
+      const paths = new Set(rows.map(r => r.storage_path));
+      (await listFolder(folder)).forEach(f => paths.add(`${folder}/${f}`));
+      if (paths.size) await sb.storage.from(BUCKET).remove([...paths]);
+      const del = must(await sb.from('projects').delete().eq('id', id).select('id'));
+      if (!del.length) throw new Error('permission denied');
       if (PROJ.cloudId === id) { delete PROJ.cloudId; if (typeof save === 'function') save(); }
       notify(tr('deleted', { f: name }));
       return true;
@@ -339,40 +340,16 @@
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     const close = () => ov.remove();
     const render = async () => {
-      const { data } = await sb.auth.getSession();
-      USER = data.session ? data.session.user : null;
+      syncAuth();
       if (!USER) {
-        bx.innerHTML = `<h3>${esc(tr('cloudTitle'))}</h3>
-          <div style="display:grid;gap:8px">
-            <label class="f"><span>${esc(tr('email'))}</span><input id="cEmail" type="email" autocomplete="email"></label>
-            <label class="f"><span>${esc(tr('password'))}</span><input id="cPass" type="password" autocomplete="current-password"></label>
-            <div id="cMsg" class="note" style="min-height:1.2em"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-              <button id="cClose">${esc(tr('close'))}</button>
-              <button id="cUp">${esc(tr('signUp'))}</button>
-              <button id="cIn" class="pri">${esc(tr('signIn'))}</button>
-            </div>
-          </div>`;
-        const msg = bx.querySelector('#cMsg');
-        const creds = () => ({ email: bx.querySelector('#cEmail').value.trim(), password: bx.querySelector('#cPass').value });
+        bx.innerHTML = `<h3>${esc(tr('cloudTitle'))}</h3><div class="note">${esc(tr('needLogin'))}</div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px"><button id="cClose">${esc(tr('close'))}</button></div>`;
         bx.querySelector('#cClose').onclick = close;
-        bx.querySelector('#cIn').onclick = async () => {
-          const r = await sb.auth.signInWithPassword(creds());
-          if (r.error) { msg.textContent = r.error.message; return; }
-          render();
-        };
-        bx.querySelector('#cUp').onclick = async () => {
-          const r = await sb.auth.signUp({ ...creds(), options: { emailRedirectTo: location.origin + location.pathname } });
-          msg.textContent = r.error ? r.error.message : (r.data.session ? '' : tr('signUpOk'));
-          if (!r.error && r.data.session) render();
-        };
-        bx.querySelector('#cPass').addEventListener('keydown', e => { if (e.key === 'Enter') bx.querySelector('#cIn').click(); });
         return;
       }
       bx.innerHTML = `<h3>${esc(tr('cloudTitle'))}</h3>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-          <span class="note" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(tr('signedAs'))}${esc(USER.email)}</span>
-          <button id="cOut">${esc(tr('signOut'))}</button>
+          <span class="note" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(tr('signedAs'))}${esc(USER.email)}${IS_ADMIN ? ' · ' + esc(tr('allProj')) : ''}</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           <button id="cSave" class="pri">${esc(tr('save'))}</button>
@@ -381,11 +358,10 @@
         <div id="cList" class="note">${esc(tr('loading'))}</div>
         <div style="display:flex;justify-content:flex-end;margin-top:14px"><button id="cClose">${esc(tr('close'))}</button></div>`;
       bx.querySelector('#cClose').onclick = close;
-      bx.querySelector('#cOut').onclick = async () => { await sb.auth.signOut(); render(); };
       bx.querySelector('#cSave').onclick = async () => { if (await cloudSave(false)) render(); };
       bx.querySelector('#cSaveAs').onclick = async () => { if (await cloudSave(true)) render(); };
       const list = bx.querySelector('#cList');
-      const r = await sb.from('projects').select('id,file_name,updated_at').order('updated_at', { ascending: false });
+      const r = await sb.from('projects').select('id,file_name,updated_at,owner_id,owner_email').order('updated_at', { ascending: false });
       if (r.error) { list.textContent = tr('err', { e: r.error.message }); return; }
       if (!r.data.length) { list.textContent = tr('empty'); return; }
       list.innerHTML = '';
@@ -394,12 +370,16 @@
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px';
         const when = new Date(p.updated_at).toLocaleString();
-        row.innerHTML = `<div style="flex:1;min-width:0"><div style="color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.file_name || tr('untitled'))}${PROJ.cloudId === p.id ? esc(tr('current')) : ''}</div><div style="font-size:11.5px">${esc(when)}</div></div>`;
+        row.innerHTML = `<div style="flex:1;min-width:0"><div style="color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.file_name || tr('untitled'))}${PROJ.cloudId === p.id ? esc(tr('current')) : ''}</div><div style="font-size:11.5px">${esc(when)}${IS_ADMIN && p.owner_id !== USER.id ? ' · ' + esc(tr('owner')) + esc(p.owner_email || '') : ''}</div></div>`;
         const bo = document.createElement('button'); bo.textContent = tr('open');
         bo.onclick = () => { const go = () => { close(); cloudOpen(p.id); }; typeof guard === 'function' ? guard(go) : go(); };
-        const bd = document.createElement('button'); bd.textContent = tr('del');
-        bd.onclick = async () => { if (await cloudDelete(p.id, p.file_name)) render(); };
-        row.append(bo, bd); list.append(row);
+        row.append(bo);
+        if (IS_ADMIN) {  // 只有管理員能刪除（資料庫權限也有相同限制）
+          const bd = document.createElement('button'); bd.textContent = tr('del');
+          bd.onclick = async () => { if (await cloudDelete(p.id, p.file_name, p.owner_id)) render(); };
+          row.append(bd);
+        }
+        list.append(row);
       });
     };
     render();
