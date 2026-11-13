@@ -17,7 +17,7 @@
   const SITE = location.origin + location.pathname;
 
   const TXT = {
-    title:      ['模板與支撐系統分析與設計程式', 'Formwork & Shoring Design'],
+    title:      ['模板支撐系統結構分析設計程式', 'Formwork & Shoring Design'],
     signInHint: ['請以公司帳號（@sucoot.com）登入', 'Sign in with your company account (@sucoot.com)'],
     email:      ['電子郵件', 'Email'],
     password:   ['密碼', 'Password'],

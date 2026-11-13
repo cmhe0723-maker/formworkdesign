@@ -1,6 +1,6 @@
 # formworkdesign
 
-模板與支撐系統分析與設計程式（面板、次墊條、主墊條、鋼柱支撐），須以公司帳號登入，可將專案存到 Supabase 雲端。
+模板支撐系統結構分析設計程式（面板、次墊條、主墊條、鋼柱支撐），須以公司帳號登入，可將專案存到 Supabase 雲端。
 
 網址：https://cmhe0723-maker.github.io/formworkdesign/
 
