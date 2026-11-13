@@ -126,6 +126,8 @@ create table public.beam_tabs (
   slab_sd_knm2  numeric not null default 0,            -- 附加靜載 kN/m²
   slab_ll_knm2  numeric not null default 2.452,        -- 施工活載 kN/m²
   slab_s_m      numeric not null default 1,            -- 受載寬度 m
+  slab_no_d     boolean not null default false,        -- 不自動產生 D 載重（noD）
+  slab_no_l     boolean not null default false,        -- 不自動產生 L 載重（noL）
 
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
@@ -219,7 +221,8 @@ create table public.distributed_loads (
   x2_m        numeric not null,
   w1_kn_m     numeric not null,
   w2_kn_m     numeric not null,
-  load_case   text not null default 'D' check (load_case in ('D', 'L', 'Lr', 'W', 'E'))
+  load_case   text not null default 'D' check (load_case in ('D', 'L', 'Lr', 'W', 'E')),
+  is_generated boolean not null default false          -- gen：由樓版設定自動產生
 );
 
 create table public.moment_loads (
