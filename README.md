@@ -14,6 +14,7 @@
 | `supabase/schema.sql` | 資料表、附件 Storage bucket、參考資料 |
 | `supabase/migrations/002_slab_flags.sql` | 樓版自動載重欄位 |
 | `supabase/migrations/003_auth_roles.sql` | 公司帳號限制、管理員／一般使用者權限 |
+| `supabase/migrations/004_grants.sql` | 資料表存取授權（較新的 Supabase 專案必須執行） |
 
 ## 使用方式
 
@@ -26,7 +27,7 @@
 ## Supabase 後台設定（一次性）
 
 1. **SQL Editor** 依序執行（每支都可重複執行）：
-   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql`
+   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql`
    （已執行過 `schema.sql` 的話，從 002 開始。）
 2. **Authentication → Sign In / Providers**
    - 關閉 **Allow new users to sign up**（網頁沒有註冊功能，這裡也要關，才能真正擋住自行註冊）。
