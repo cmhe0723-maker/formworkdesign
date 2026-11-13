@@ -1,6 +1,6 @@
 # formworkdesign
 
-模板支撐系統結構分析設計程式（面板、次墊條、主墊條、鋼柱支撐），須以公司帳號登入，可將專案存到 Supabase 雲端。
+模板支撐系統結構分析設計程式（面板、貫材、次墊條、主墊條、鋼柱支撐，含對拉螺桿檢核），須以公司帳號登入，可將專案存到 Supabase 雲端。
 
 網址：https://cmhe0723-maker.github.io/formworkdesign/
 
@@ -15,11 +15,18 @@
 | `supabase/migrations/002_slab_flags.sql` | 樓版自動載重欄位 |
 | `supabase/migrations/003_auth_roles.sql` | 公司帳號限制、管理員／一般使用者權限 |
 | `supabase/migrations/004_grants.sql` | 資料表存取授權（較新的 Supabase 專案必須執行） |
+| `supabase/migrations/005_waler_tie.sql` | 貫材分頁、對拉螺桿檢核設定 |
 
 ## 使用方式
 
 - 開啟網頁先登入（公司信箱＋密碼），登入後才會顯示程式；右上角顯示帳號與「登出」。
 - 登入狀態會保留在瀏覽器，閒置超過 12 小時自動登出。
+- 分頁：1 面板、2 貫材、3 次墊條、4 主墊條、5 支撐、6 附件。
+  - **貫材**：內容與次墊條相同，可勾選是否使用；未使用時不列入計算書，章節編號自動連續。
+  - **對拉螺桿抗拉強度檢核**（主墊條頁最後）：勾選後從 SUCOOT 型錄的 Tie Rod、Wing Nut 選擇材料
+    （螺帽只列出同螺紋者，也可「自動選擇合適組合」）。螺桿拉力取 ASD 載重組合下主墊條最大支承反力，
+    與型錄安全荷重（最大荷重 ÷ 2）比較；結果列在設計檢核與計算書中。
+  - 舊版三頁的專案檔、瀏覽器暫存與雲端專案，開啟時會自動補上「未使用」的貫材頁。
 - 右上角 **☁ 雲端**：儲存目前專案、另存新專案、開啟雲端專案。
   - 一般使用者：只看得到、只能修改自己的專案，不能刪除。
   - 管理員：看得到所有人的專案（標示建立者），可以刪除專案。
@@ -27,7 +34,7 @@
 ## Supabase 後台設定（一次性）
 
 1. **SQL Editor** 依序執行（`schema.sql` 只在全新資料庫執行一次，migrations 都可重複執行）：
-   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql`
+   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql`
    （已執行過 `schema.sql` 的話，從 002 開始。）
 2. **Authentication → Sign In / Providers**
    - 關閉 **Allow new users to sign up**（網頁沒有註冊功能，這裡也要關，才能真正擋住自行註冊）。
