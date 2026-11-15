@@ -109,6 +109,7 @@
       design_method: S.method === 'LRFD' ? 'LRFD' : 'ASD',
       lang: ['zh', 'en', 'th', 'id'].includes(S.lang) ? S.lang : 'zh',
       unit_force: u.F || 'kN', unit_length: u.L || 'm', unit_dim: u.d || 'mm', unit_stress: u.s || 'MPa',
+      pressure: PROJ.press || null,   // 混凝土側壓力計算頁設定
       report_name: r.name || '', report_org: r.org || '', report_title: r.title || '', report_item: r.item || '', report_no: r.no || '', report_designer: r.designer || '',
       report_date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || '') ? r.date : null,
       report_paper: r.paper || 'A4',
@@ -127,7 +128,7 @@
       defl_l_ratio_live: num(dl.L) ?? 360, defl_l_ratio_total: num(dl.T) ?? 240,
       defl_mode: ['ratio', 'abs', 'both'].includes(dl.mode) ? dl.mode : 'ratio', defl_abs_mm: num(dl.abs) ?? 3,
       slab_on: !!sl.on, slab_t_mm: num(sl.t) ?? 250, slab_gc_knm3: num(sl.gc) ?? 23.536, slab_sd_knm2: num(sl.sd) ?? 0,
-      slab_ll_knm2: num(sl.ll) ?? 2.452, slab_s_m: num(sl.s) ?? 1, slab_no_d: !!sl.noD, slab_no_l: !!sl.noL,
+      slab_ll_knm2: num(sl.ll) ?? 2.452, slab_s_m: num(sl.s) ?? 1, slab_no_d: !!sl.noD, slab_no_l: !!sl.noL, slab_src: sl.src === 'press' ? 'press' : 'slab',
     };
   }
 
@@ -271,7 +272,7 @@
           code: p.design_code, method: p.design_method,
           view: t.view, flipM: t.flip_m, bothWE: t.both_we,
           dl: { L: num(t.defl_l_ratio_live), T: num(t.defl_l_ratio_total), mode: t.defl_mode, abs: num(t.defl_abs_mm) },
-          slab: { on: t.slab_on, t: num(t.slab_t_mm), gc: num(t.slab_gc_knm3), sd: num(t.slab_sd_knm2), ll: num(t.slab_ll_knm2), s: num(t.slab_s_m), ...(t.slab_no_d ? { noD: true } : {}), ...(t.slab_no_l ? { noL: true } : {}) },
+          slab: { on: t.slab_on, t: num(t.slab_t_mm), gc: num(t.slab_gc_knm3), sd: num(t.slab_sd_knm2), ll: num(t.slab_ll_knm2), s: num(t.slab_s_m), ...(t.slab_no_d ? { noD: true } : {}), ...(t.slab_no_l ? { noL: true } : {}), ...(t.slab_src === 'press' ? { src: 'press' } : {}) },
           spans: by(spans, t.id).map(r => {
             const s = {};
             SPAN_MAP.forEach(([k, c, ty]) => { const v = r[c]; if (v != null) s[k] = ty === 'n' || ty === 'i' ? +v : v; });
@@ -306,7 +307,7 @@
         project: {
           active: outActive, u: { F: p.unit_force, L: p.unit_length, d: p.unit_dim, s: p.unit_stress },
           rep, code: p.design_code, method: p.design_method,
-          tabs: outTabs, column: columnState2Obj(colR), attachments: atts,
+          tabs: outTabs, press: p.pressure || null, column: columnState2Obj(colR), attachments: atts,
         },
       };
       // 交給網頁原本的「開啟檔案」流程，沿用其驗證與正規化
