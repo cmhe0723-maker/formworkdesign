@@ -16,6 +16,7 @@
 | `supabase/migrations/003_auth_roles.sql` | 公司帳號限制、管理員／一般使用者權限 |
 | `supabase/migrations/004_grants.sql` | 資料表存取授權（較新的 Supabase 專案必須執行） |
 | `supabase/migrations/005_waler_tie.sql` | 貫材分頁、對拉螺桿檢核設定 |
+| `supabase/migrations/006_report_org_title.sql` | 封面工程單位、自訂計算書標題 |
 
 ## 使用方式
 
@@ -28,6 +29,8 @@
     與型錄安全荷重（最大荷重 ÷ 2）比較；結果列在設計檢核與計算書中。
     啟用時「5. 支撐容許承載力檢核」頁標示為未使用，不列入計算書。
   - 計算書目錄的各頁標題會附上該頁選用的材料與斷面規格。
+- 封面：點選標題即可修改（可換行，也可還原預設）；欄位依序為工程名稱、工程單位、設計項目、設計者、日期。
+- 頁碼自面板頁起算為第 1 頁，封面與目錄不編頁碼。
   - 舊版三頁的專案檔、瀏覽器暫存與雲端專案，開啟時會自動補上「未使用」的貫材頁。
 - 右上角 **☁ 雲端**：儲存目前專案、另存新專案、開啟雲端專案。
   - 一般使用者：只看得到、只能修改自己的專案，不能刪除。
@@ -36,7 +39,7 @@
 ## Supabase 後台設定（一次性）
 
 1. **SQL Editor** 依序執行（`schema.sql` 只在全新資料庫執行一次，migrations 都可重複執行）：
-   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql`
+   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql` → `supabase/migrations/006_report_org_title.sql`
    （已執行過 `schema.sql` 的話，從 002 開始。）
 2. **Authentication → Sign In / Providers**
    - 關閉 **Allow new users to sign up**（網頁沒有註冊功能，這裡也要關，才能真正擋住自行註冊）。

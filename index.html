@@ -123,7 +123,10 @@ main.unused .inputs,main.unused > section:last-child{opacity:.45}
 .paper{background:#fff;max-width:820px;margin:0 auto;aspect-ratio:210/297;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1px solid var(--line);position:relative;padding:7% 9%}
 .paper.cover::before{content:'';position:absolute;inset:3%;border:4px solid var(--accent);pointer-events:none}
 .paper.cover::after{content:'';position:absolute;inset:calc(3% + 10px);border:1px solid var(--accent);pointer-events:none}
-.paper .ctitle{white-space:pre-line;margin-top:20%;text-align:center;font-size:clamp(22px,3.4vw,36px);font-weight:700;line-height:1.45;color:#1d2329}
+.paper .ctitle[contenteditable]{cursor:text;border-radius:6px;outline:1.5px dashed transparent;outline-offset:6px}
+.ctitle[contenteditable]:hover{outline-color:#c9d6e3}
+.ctitle[contenteditable]:focus{outline-color:var(--accent);background:#f3f7fb}
+.ctitle{white-space:pre-line;margin-top:20%;text-align:center;font-size:clamp(22px,3.4vw,36px);font-weight:700;line-height:1.45;color:#1d2329}
 .paper .cbar{width:36%;height:4px;background:var(--accent);margin:22px auto 0}.paper .cbar.sm{width:20%;margin-top:14px}
 .paper .cfields{margin:22% auto 0;width:78%;position:relative;z-index:1;display:grid;grid-template-columns:auto 1fr;column-gap:12px;row-gap:26px;align-items:end}
 .paper .crow{display:contents;font-size:clamp(14px,1.8vw,19px);font-weight:700}.paper .crow span{font-size:clamp(14px,1.8vw,19px);font-weight:700;white-space:nowrap}
@@ -992,6 +995,11 @@ Object.assign(DICT, {
     slabS1: ['支距 s 為貫材間距（受載寬度）。', 's is the waler spacing (tributary width).', 's คือระยะห่างของคานกลาง (ความกว้างรับน้ำหนัก)', 's adalah jarak balok antara (lebar tributari).'],
     useWaler: ['使用貫材（未勾選時，此頁不列入計算書）', 'Use walers (when unticked, this page is left out of the report)', 'ใช้คานกลาง (หากไม่เลือก จะไม่รวมหน้านี้ในรายงาน)', 'Gunakan balok antara (jika tidak dicentang, halaman ini tidak masuk laporan)'],
     unused: ['未使用', 'Not used', 'ไม่ใช้', 'Tidak dipakai'],
+    projOrg: ['工程單位', 'Organization', 'หน่วยงาน', 'Instansi'],
+    titleEdit: ['點選標題即可修改（可按 Enter 換行）', 'Click the title to edit it (Enter for a new line)', 'คลิกที่ชื่อเพื่อแก้ไข', 'Klik judul untuk mengubah'],
+    titleReset: ['還原預設標題', 'Restore default title', 'คืนค่าชื่อเริ่มต้น', 'Kembalikan judul bawaan'],
+    tocNote: ['頁碼依目前勾選的頁面與報告內容自動排版產生，自面板頁起算第 1 頁，封面與目錄不編頁碼；修改任一頁後請按「重新計算頁碼」。', 'Page numbers come from laying out the report with the selected pages and content; page 1 is the first page after the contents (the cover and contents are not numbered). Press “Recalculate page numbers” after editing.', D.tocNote ? D.tocNote[2] : '', D.tocNote ? D.tocNote[3] : ''],
+    tocTotal: ['計算書內容共 {n} 頁（不含封面及目錄）', 'The report body has {n} pages (excluding cover and contents)', 'เนื้อหารายงาน {n} หน้า (ไม่รวมปกและสารบัญ)', 'Isi laporan {n} halaman (tanpa sampul dan daftar isi)'],
     colOffNote: ['主墊條已啟用對拉螺桿抗拉強度檢核，本頁不使用，也不列入計算書。', 'The tie rod check is enabled on the primary bearer page, so this page is not used and is left out of the report.', 'เปิดการตรวจสอบเหล็กยึดแบบแล้ว หน้านี้จึงไม่ใช้และไม่รวมในรายงาน', 'Pemeriksaan tie rod aktif; halaman ini tidak dipakai dan tidak masuk laporan.'],
     tieColOff: ['已啟用：「5. 支撐容許承載力檢核」頁不使用，也不列入計算書。', 'Enabled: page 5 (shoring capacity check) is not used and is left out of the report.', 'เปิดแล้ว: หน้า 5 ไม่ใช้และไม่รวมในรายงาน', 'Aktif: halaman 5 tidak dipakai dan tidak masuk laporan.'],
     s_custom_col: ['自訂斷面', 'custom section', 'หน้าตัดกำหนดเอง', 'penampang khusus'],
@@ -1765,7 +1773,7 @@ const CSSVARS = { '--accent': '#1f4e79', '--R': '#6b3fa0', '--V': '#2563a8', '--
 
 function ensureRep() {
   S.rep = S.rep || {};
-  const r = S.rep, d = { name: '', item: '', designer: '', date: new Date().toISOString().slice(0, 10), paper: 'A4', inc: { inputs: true, diag: true, res: true, design: true, details: true }, tabsInc: [true, true, true, true, true, true] };
+  const r = S.rep, d = { name: '', org: '', title: '', item: '', designer: '', date: new Date().toISOString().slice(0, 10), paper: 'A4', inc: { inputs: true, diag: true, res: true, design: true, details: true }, tabsInc: [true, true, true, true, true, true] };
   for (const k in d) if (r[k] === undefined) r[k] = d[k];
   if (r.item === '' && r.member) r.item = r.member;
   if (r.tabsInc.length === 5) r.tabsInc.splice(1, 0, true);   // 舊版（無貫材頁）
@@ -1778,7 +1786,7 @@ function openReportDialog() {
   bx.append(el('h3', {}, T('printBtn')));
   const g = el('div', { class: 'g g2' });
   const tx = (k, lab) => { const i = el('input', { type: 'text' }); i.value = r[k] || ''; i.oninput = () => { r[k] = i.value; save(); }; g.append(field(T(lab), i)); };
-  tx('name', 'projNameC'); tx('item', 'designItem'); tx('designer', 'designer'); tx('date', 'date');
+  tx('name', 'projNameC'); tx('org', 'projOrg'); tx('item', 'designItem'); tx('designer', 'designer'); tx('date', 'date');
   const ps = el('select'); ['A4', 'Letter'].forEach(k => { const o = el('option', { value: k }); o.textContent = k; ps.append(o); }); ps.value = r.paper; ps.onchange = () => { r.paper = ps.value; save(); };
   g.append(field(T('paper'), ps)); bx.append(g);
   bx.append(el('div', { style: 'margin:12px 0 4px;font-size:12px;color:var(--sub)' }, T('pagesIncl')));
@@ -2059,8 +2067,8 @@ async function buildReportPDF(r, progress, opts = {}) {
       progress && progress(title);
     }
   }
-  // 封面（第 1 頁）、目錄（第 2 頁），分析內容自第 3 頁起
-  const OFF = 2, N = L.pages.length + OFF;
+  // 頁碼自內容第一頁（面板頁）起算為第 1 頁；封面與目錄不編頁碼
+  const OFF = 0, N = L.pages.length;
   const entries = [];
   Object.keys(starts).map(Number).sort((a, b) => a - b).forEach(k => {
     entries.push({ n: NO(k), title: T('tab' + k) + tocSpec(k), page: starts[k] + OFF + 1 });
@@ -2078,11 +2086,11 @@ async function buildReportPDF(r, progress, opts = {}) {
     if (i === 0) return;
     const x = c.getContext('2d'); x.font = `400 14.5px ${FONT}`; x.fillStyle = '#7a838c';
     const yb = L.H - PX(9); x.strokeStyle = '#dde1dc'; x.beginPath(); x.moveTo(L.M, yb - 22); x.lineTo(L.W - L.M, yb - 22); x.stroke();
-    x.fillText([T('coverTitle').replace('\n', ''), r.name, r.item].filter(Boolean).join(' · '), L.M, yb);
-    x.textAlign = 'right'; x.fillText(T('page', { n: i + 1, N }), L.W - L.M, yb); x.textAlign = 'left';
-    progress && progress(`${i + 1}/${N}`);
+    x.fillText([repTitle1(r), r.name, r.item].filter(Boolean).join(' · '), L.M, yb);
+    if (i >= 2) { x.textAlign = 'right'; x.fillText(T('page', { n: i - 1, N }), L.W - L.M, yb); x.textAlign = 'left'; }
+    progress && progress(`${i + 1}/${pages.length}`);
   });
-  return canvasesToPDF(pages, PAPER[r.paper], T('coverTitle').replace('\n', ''));
+  return canvasesToPDF(pages, PAPER[r.paper], repTitle1(r));
 }
 function blankPage(L) { const c = document.createElement('canvas'); c.width = L.W; c.height = L.H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, L.W, L.H); return [c, x]; }
 function wrapCtx(x, text, maxW) {
@@ -2095,19 +2103,22 @@ function wrapCtx(x, text, maxW) {
   });
   return out;
 }
+// 計算書標題：封面可自行修改，未修改時使用預設名稱
+const repTitle = r => (r && typeof r.title === 'string' && r.title.trim()) ? r.title.trim() : T('coverTitle');
+const repTitle1 = r => repTitle(r).replace(/\s*\n\s*/g, '');
 function drawCover(L, r) {
   const [c, x] = blankPage(L), W = L.W, H = L.H, m = PX(14);
   x.strokeStyle = '#1f4e79'; x.lineWidth = 6; x.strokeRect(m, m, W - 2 * m, H - 2 * m);
   x.lineWidth = 1.5; x.strokeRect(m + 14, m + 14, W - 2 * m - 28, H - 2 * m - 28);
   // 大標題
   x.fillStyle = '#1d2329'; x.textAlign = 'center';
-  let sz = 58; x.font = `700 ${sz}px ${FONT}`; let lines = wrapCtx(x, T('coverTitle'), W - 2 * m - 160);
-  if (lines.length > 2) { sz = 46; x.font = `700 ${sz}px ${FONT}`; lines = wrapCtx(x, T('coverTitle'), W - 2 * m - 140); }
+  let sz = 58; x.font = `700 ${sz}px ${FONT}`; let lines = wrapCtx(x, repTitle(r), W - 2 * m - 160);
+  if (lines.length > 2) { sz = 46; x.font = `700 ${sz}px ${FONT}`; lines = wrapCtx(x, repTitle(r), W - 2 * m - 140); }
   let y = H * 0.30 - (lines.length - 1) * sz * 0.7;
   lines.forEach(s => { x.fillText(s, W / 2, y); y += sz * 1.4; });
   x.fillStyle = '#1f4e79'; x.fillRect(W / 2 - 160, y - sz * 0.6, 320, 5);
   // 欄位
-  const rows = [[T('projNameC'), r.name], [T('designItem'), r.item], [T('designer'), r.designer], [T('date'), r.date]];
+  const rows = [[T('projNameC'), r.name], [T('projOrg'), r.org], [T('designItem'), r.item], [T('designer'), r.designer], [T('date'), r.date]];
   const bx = W * 0.17, bw = W * 0.66; let yy = H * 0.56;
   x.textAlign = 'left';
   x.font = `700 28px ${FONT}`; const lw = Math.max(...rows.map(rw => x.measureText(rw[0] + '：').width)) + 18;
@@ -2265,7 +2276,7 @@ function guard(next) {
 }
 function newModel() {
   guard(() => {
-    const sh = { lang: S.lang, u: { ...S.u }, rep: S.rep ? { ...S.rep, name: '', no: '', member: '' } : undefined, code: S.code, method: S.method };
+    const sh = { lang: S.lang, u: { ...S.u }, rep: S.rep ? { ...S.rep, name: '', org: '', no: '', member: '' } : undefined, code: S.code, method: S.method };
     PROJ = defaultProject(sh); PROJ.attachments = []; S = PROJ.tabs[0]; if (typeof colRestore === 'function') { PROJ.column = null; colRestore(null); } refreshProject(); if (typeof switchTab === 'function' && PROJ.col) switchTab(0); toast(T('newOk'));
   });
 }
@@ -2459,16 +2470,22 @@ function showArea() {
 function renderCover() {
   const r = ensureRep(); pageWrap.innerHTML = '';
   const paper = el('div', { class: 'paper cover' });
-  paper.append(el('div', { class: 'ctitle' }, T('coverTitle')), el('div', { class: 'cbar' }));
+  // 標題：直接在封面上點選修改
+  const ttl = el('div', { class: 'ctitle', contenteditable: 'true', spellcheck: 'false', title: T('titleEdit') }); ttl.textContent = repTitle(r);
+  const saveTitle = () => { const v = ttl.innerText.replace(/\r/g, '').replace(/\n{2,}/g, '\n').trim(); r.title = v === T('coverTitle') ? '' : v; syncShared(); DIRTY = true; updTitle(); save(); TOCC = null; };
+  ttl.oninput = saveTitle; ttl.onblur = () => { if (!ttl.innerText.trim()) ttl.textContent = repTitle(r); };
+  paper.append(ttl, el('div', { class: 'cbar' }));
   const box = el('div', { class: 'cfields' });
-  [['name', 'projNameC', 'text'], ['item', 'designItem', 'text'], ['designer', 'designer', 'text'], ['date', 'date', 'date']].forEach(([k, lab, ty]) => {
+  [['name', 'projNameC', 'text'], ['org', 'projOrg', 'text'], ['item', 'designItem', 'text'], ['designer', 'designer', 'text'], ['date', 'date', 'date']].forEach(([k, lab, ty]) => {
     const row = el('label', { class: 'crow' }); row.append(el('span', {}, T(lab) + '：'));
     const i = el('input', { type: ty }); i.value = r[k] || '';
     i.oninput = () => { r[k] = i.value; syncShared(); DIRTY = true; updTitle(); save(); TOCC = null; };
     row.append(i); box.append(row);
   });
   paper.append(box, el('div', { class: 'cfoot' }, T('genBy')));
-  pageWrap.append(el('div', { class: 'pnote' }, T('coverNote')), paper);
+  const tbar = el('div', { class: 'pnote' }); tbar.append(T('coverNote') + ' ' + T('titleEdit') + '　');
+  const rb = el('button', {}, T('titleReset')); rb.onclick = () => { r.title = ''; syncShared(); DIRTY = true; updTitle(); save(); TOCC = null; renderCover(); };
+  tbar.append(rb); pageWrap.append(tbar, paper);
 }
 let TOCC = null, TOCBUSY = false;
 async function renderTOC(force) {
@@ -2491,7 +2508,6 @@ async function renderTOC(force) {
     return;
   }
   const row = (lab, pg, cls) => { const d = el('div', { class: 'trow ' + (cls || '') }); d.append(el('span', { class: 'tl' }, lab), el('span', { class: 'td' }), el('span', { class: 'tp' }, String(pg))); list.append(d); };
-  row(T('tocCover'), 1, 'sub'); row(T('tocTab'), 2, 'sub');
   TOCC.entries.forEach(e => e.sub ? row(e.title, e.page, 'sub2') : row(`${e.n}.  ${e.title}`, e.page));
   if (TOCC.err) list.append(el('div', { class: 'warn' }, TOCC.err));
   list.append(el('div', { class: 'muted', style: 'margin-top:18px;font-size:13px' }, T('tocTotal', { n: TOCC.total })));
