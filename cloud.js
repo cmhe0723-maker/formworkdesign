@@ -128,7 +128,7 @@
       defl_l_ratio_live: num(dl.L) ?? 360, defl_l_ratio_total: num(dl.T) ?? 240,
       defl_mode: ['ratio', 'abs', 'both'].includes(dl.mode) ? dl.mode : 'ratio', defl_abs_mm: num(dl.abs) ?? 3,
       slab_on: !!sl.on, slab_t_mm: num(sl.t) ?? 250, slab_gc_knm3: num(sl.gc) ?? 23.536, slab_sd_knm2: num(sl.sd) ?? 0,
-      slab_ll_knm2: num(sl.ll) ?? 2.452, slab_s_m: num(sl.s) ?? 1, slab_no_d: !!sl.noD, slab_no_l: !!sl.noL,
+      slab_ll_knm2: num(sl.ll) ?? 2.452, slab_s_m: num(sl.s) ?? 1, slab_no_d: !!sl.noD, slab_no_l: !!sl.noL, slab_src: sl.src === 'press' ? 'press' : 'slab',
     };
   }
 
@@ -272,7 +272,7 @@
           code: p.design_code, method: p.design_method,
           view: t.view, flipM: t.flip_m, bothWE: t.both_we,
           dl: { L: num(t.defl_l_ratio_live), T: num(t.defl_l_ratio_total), mode: t.defl_mode, abs: num(t.defl_abs_mm) },
-          slab: { on: t.slab_on, t: num(t.slab_t_mm), gc: num(t.slab_gc_knm3), sd: num(t.slab_sd_knm2), ll: num(t.slab_ll_knm2), s: num(t.slab_s_m), ...(t.slab_no_d ? { noD: true } : {}), ...(t.slab_no_l ? { noL: true } : {}) },
+          slab: { on: t.slab_on, t: num(t.slab_t_mm), gc: num(t.slab_gc_knm3), sd: num(t.slab_sd_knm2), ll: num(t.slab_ll_knm2), s: num(t.slab_s_m), ...(t.slab_no_d ? { noD: true } : {}), ...(t.slab_no_l ? { noL: true } : {}), ...(t.slab_src === 'press' ? { src: 'press' } : {}) },
           spans: by(spans, t.id).map(r => {
             const s = {};
             SPAN_MAP.forEach(([k, c, ty]) => { const v = r[c]; if (v != null) s[k] = ty === 'n' || ty === 'i' ? +v : v; });

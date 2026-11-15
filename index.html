@@ -999,6 +999,14 @@ Object.assign(DICT, {
     slabS1: ['支距 s 為貫材間距（受載寬度）。', 's is the waler spacing (tributary width).', 's คือระยะห่างของคานกลาง (ความกว้างรับน้ำหนัก)', 's adalah jarak balok antara (lebar tributari).'],
     useWaler: ['使用貫材（未勾選時，此頁不列入計算書）', 'Use walers (when unticked, this page is left out of the report)', 'ใช้คานกลาง (หากไม่เลือก จะไม่รวมหน้านี้ในรายงาน)', 'Gunakan balok antara (jika tidak dicentang, halaman ini tidak masuk laporan)'],
     unused: ['未使用', 'Not used', 'ไม่ใช้', 'Tidak dipakai'],
+    slabOn: ['自動產生全長均佈載重（依樓版載重或混凝土側壓力）', 'Generate full-length uniform loads (from slab loads or concrete lateral pressure)'],
+    loadSrc: ['載重來源', 'Load source'],
+    srcSlab: ['樓版載重（頂版模板）：PD = (γc·t + qSD)·s，PL = qL·s', 'Slab loads (slab formwork): PD = (γc·t + qSD)·s, PL = qL·s'],
+    srcPress: ['混凝土側壓力（牆模）：w = Pmax × s', 'Concrete lateral pressure (wall formwork): w = Pmax × s'],
+    wpNote: ['w = Pmax × s，Pmax 取自「1. 混凝土側壓力計算」頁，以 D 載重全長均佈（保守取最大側壓力）；s 為此構件間距（受載寬度）。', 'w = Pmax × s, with Pmax from page 1 (concrete lateral pressure), applied as a full-length uniform D load (conservatively the maximum pressure); s is this member’s spacing (tributary width).'],
+    wpNoPress: ['尚無側壓力：請到「1. 混凝土側壓力計算」頁勾選「使用此頁」並完成輸入。', 'No lateral pressure yet: tick “Use this page” on page 1 and complete its inputs.'],
+    wpNoPressShort: ['尚無側壓力', 'No pressure yet'],
+    wpDesc: ['混凝土側壓力載重（牆模）：Pmax = {p}（第 1 頁 ACI 347R-14），s = {s} → w = Pmax·s = {w}（D，全長均佈）', 'Concrete lateral pressure (wall formwork): Pmax = {p} (page 1, ACI 347R-14), s = {s} → w = Pmax·s = {w} (D, full length)'],
     projOrg: ['工程單位', 'Organization', 'หน่วยงาน', 'Instansi'],
     titleEdit: ['點選標題即可修改（可按 Enter 換行）', 'Click the title to edit it (Enter for a new line)', 'คลิกที่ชื่อเพื่อแก้ไข', 'Klik judul untuk mengubah'],
     titleReset: ['還原預設標題', 'Restore default title', 'คืนค่าชื่อเริ่มต้น', 'Kembalikan judul bawaan'],
@@ -1061,7 +1069,7 @@ const EXAMPLES = {
 };
 // ---- 三頁專案：0 面板、1 次墊條、2 主墊條 ----
 // 預設載重：樓版厚 25 cm × 24 kN/m³ + 模板 0.3 kN/m² = 6.3 kN/m²（D）；施工活載 2.5 kN/m²（L）
-const SLAB0 = { on: false, t: 250, gc: 2.4 * 9.80665, sd: 0, ll: 0.25 * 9.80665, s: 1 };
+const SLAB0 = { on: false, src: 'slab', t: 250, gc: 2.4 * 9.80665, sd: 0, ll: 0.25 * 9.80665, s: 1 };  // src：slab 樓版載重、press 混凝土側壓力（牆模）
 function tabDefault(i) {
   const asd = { method: 'ASD', dl: { L: 360, T: 240, mode: 'both', abs: 3 } };
   if (i === 0) return base({ ...asd, slab: { ...SLAB0, on: true, s: 1.0 }, spans: [0.3, 0.3, 0.3].map(L => ({ ...SPAN0, L, mat: 'wood', E: 6, sec: 'rect', b: 1000, h: 18, Fb: 10, Fv: 0.8 })), supports: [{ type: 'pin' }, { type: 'roller' }, { type: 'roller' }, { type: 'roller' }] });
@@ -1429,11 +1437,21 @@ function buildView() {
   }
 }
 // ---- 樓版載重計算：PD = (γc·t + qSD)·s，PL = qL·s ----
-function slabVals(sl) { const PD = (sl.gc * sl.t / 1000 + (sl.sd || 0)) * sl.s, PL = (sl.ll || 0) * sl.s; return { PD, PL }; }
+// 側壓力頁的設計側壓力（kPa）；未使用、輸入有誤或模組尚未載入時為 null
+function pressPmax() {
+  if (typeof pressCalc !== 'function' || !PROJ.press || !PROJ.press.use) return null;
+  const c = pressCalc(PROJ.press); return c.err ? null : c.Pmax;
+}
+function slabVals(sl) {
+  if (sl.src === 'press') { const P = pressPmax(); return { PD: P == null ? 0 : P * sl.s, PL: 0, P }; }
+  const PD = (sl.gc * sl.t / 1000 + (sl.sd || 0)) * sl.s, PL = (sl.ll || 0) * sl.s; return { PD, PL };
+}
 function applySlab() {
   const before = JSON.stringify(S.dists.filter(d => d.gen));
   const manual = S.dists.filter(d => !d.gen), gen = [];
   const sl = S.slab;
+  // 側壓力模組尚未載入（頁面初始化時）：保留原有的自動載重，待載入後重算
+  if (sl && sl.on && sl.src === 'press' && typeof pressCalc !== 'function') return false;
   if (sl && sl.on) {
     const L = +totalL().toFixed(6), { PD, PL } = slabVals(sl);
     if (PD > 0 && !sl.noD) gen.push({ x1: 0, x2: L, w1: PD, w2: PD, c: 'D', gen: true });
@@ -1444,6 +1462,10 @@ function applySlab() {
 }
 function slabDesc() {
   const sl = S.slab, { PD, PL } = slabVals(sl);
+  if (sl.src === 'press') {
+    const P = pressPmax();
+    return P == null ? T('wpNoPress') : T('wpDesc', { p: `${fq('p', P)} ${un('p')}`, s: `${fq('L', sl.s)} ${un('L')}`, w: `${fq('w', PD)} ${un('w')}` });
+  }
   return `${T('slabCalc')}: t = ${fq('d', sl.t)} ${un('d')}, γc = ${fq('g', sl.gc)} ${un('g')}${sl.sd ? `, qSD = ${fq('p', sl.sd)} ${un('p')}` : ''}, qL = ${fq('p', sl.ll)} ${un('p')}, s = ${fq('L', sl.s)} ${un('L')} → PD = (γc·t${sl.sd ? ' + qSD' : ''})·s = ${fq('w', PD)} ${un('w')}, PL = qL·s = ${fq('w', PL)} ${un('w')}`;
 }
 function renderSlab() {
@@ -1454,6 +1476,21 @@ function renderSlab() {
   cb.onchange = () => { sl.on = cb.checked; sl.noD = sl.noL = false; applySlab(); renderSlab(); renderDistTable(); schedule(); };
   l.append(cb, ' ' + T('slabOn')); wrap.append(l);
   if (sl.on) {
+    // 載重來源：樓版載重（頂版模板）／混凝土側壓力（牆模）
+    const ss = el('select', { id: 'slabSrc' }); [['slab', T('srcSlab')], ['press', T('srcPress')]].forEach(([v, t]) => { const o = el('option', { value: v }); o.textContent = t; ss.append(o); });
+    ss.value = sl.src || 'slab'; ss.onchange = () => { sl.src = ss.value; sl.noD = sl.noL = false; applySlab(); renderSlab(); renderDistTable(); schedule(); };
+    const sw = el('div', { class: 'g mt' }); sw.append(field(T('loadSrc'), ss)); wrap.append(sw);
+  }
+  if (sl.on && sl.src === 'press') {
+    const g = el('div', { class: 'g g2 mt' });
+    const P = pressPmax();
+    const res = el('div', { class: 'slabres' });
+    const resTxt = () => { const v = slabVals(sl); return v.P == null ? `<span style="color:#9b3415">${T('wpNoPressShort')}</span>` : `Pmax = <b>${fq('p', v.P)}</b> ${un('p')}<br>w = <b>${fq('w', v.PD)}</b> ${un('w')}`; };
+    const upd = () => { applySlab(); res.innerHTML = resTxt(); renderDistTable(); };
+    g.append(field(T('slabS', { u: un('L') }), numInput(sl, 's', { min: 0, q: 'L', onchange: upd })));
+    res.innerHTML = resTxt(); g.append(res); wrap.append(g);
+    wrap.append(el('div', { class: 'note', style: 'margin-top:4px' + (P == null ? ';color:#9b3415' : '') }, P == null ? T('wpNoPress') : T('wpNote')));
+  } else if (sl.on) {
     const g = el('div', { class: 'g g3 mt' });
     const upd = () => { applySlab(); res.innerHTML = resTxt(); renderDistTable(); };
     const f = (k, lab, q) => g.append(field(T(lab, { u: un(q) }), numInput(sl, k, { min: 0, q, onchange: upd })));
@@ -2930,6 +2967,13 @@ Object.assign(DICT, {
   pNote: ['說明：Pmax 以下為液壓分布（p = ρg·z），達 Pmax 後至底部維持定值。公式適用於坍度 ≤ 175 mm 且一般內部振動深度 ≤ 1.2 m 之混凝土；溫度 T 為澆置時混凝土溫度。結果應由專業技師複核。', 'Note: pressure is hydrostatic (p = ρg·z) down to Pmax, then constant to the base. The formulas apply to concrete with slump ≤ 175 mm and normal internal vibration to a depth ≤ 1.2 m; T is the concrete temperature at placement. Results should be reviewed by a professional engineer.'],
   pBadIn: ['請輸入大於 0 的高度、速率與密度，且溫度需高於 −17.8 °C。', 'Enter a positive height, rate and density, and a temperature above −17.8 °C.'],
   pSpecWall: ['牆', 'wall'], pSpecCol: ['柱', 'column'],
+  pApply: ['帶入各頁載重（牆模）', 'Apply to all pages (wall formwork)'],
+  pRevert: ['全部改回樓版載重', 'Revert all pages to slab loads'],
+  pApplyHint: ['將面板、貫材、次墊條、主墊條的自動均佈載重改為 w = Pmax × 各頁間距 s（D 載重），之後修改本頁參數會自動更新。各頁也可在「載重來源」個別切換。', 'Sets the generated uniform load on the panel, waler, secondary and primary pages to w = Pmax × that page’s spacing s (D load); later changes on this page update them automatically. Each page can switch its load source individually.'],
+  pApplied: ['已帶入側壓力：{list}', 'Lateral pressure applied: {list}'],
+  pReverted: ['已改回樓版載重', 'Reverted to slab loads'],
+  pUsingList: ['目前使用側壓力的頁面：{list}', 'Pages using the lateral pressure: {list}'],
+  pUsingNone: ['目前沒有頁面使用側壓力作為載重。', 'No page uses the lateral pressure as its load yet.'],
 });
 
 const pressUS = () => S.u && (S.u.L === 'ft' || S.u.L === 'in');
@@ -2999,6 +3043,20 @@ function pressLines(c) {
   return L;
 }
 
+// 使用側壓力作為載重的梁頁
+const pressTabs = () => PROJ.tabs.map((t, i) => (t.slab && t.slab.on && t.slab.src === 'press') ? i : -1).filter(i => i >= 0);
+// 重新計算使用側壓力的梁頁（側壓力參數變更後），最後還原目前頁面
+function rerunPressTabs() {
+  const idx = pressTabs(); if (!idx.length) return;
+  const act = PROJ.active;
+  idx.forEach(i => { S = PROJ.tabs[i]; RES = null; lastDC = null; try { run(); } catch (e) { } });
+  S = PROJ.tabs[act]; RES = null; lastDC = null;
+  // 目前頁面的輸入區也要重畫（即使正在顯示側壓力頁，返回時才會看到最新的載重來源）
+  try { if (!PROJ.col) renderInputs(); run(); } catch (e) { }
+  renderTabs();
+}
+let _pressTimer = null;
+const schedulePressTabs = () => { clearTimeout(_pressTimer); _pressTimer = setTimeout(rerunPressTabs, 250); };
 function ensurePress() {
   // 在原物件上補齊預設值（不可替換物件，否則畫面上的修改會寫到舊物件）
   if (!PROJ.press || typeof PROJ.press !== 'object') PROJ.press = {};
@@ -3011,7 +3069,7 @@ function renderPress() {
   const p = ensurePress(); pageWrap.innerHTML = '';
   const top = el('div', { class: 'pnote pp-top' });
   const lab = el('label', { class: 'chk', style: 'font-weight:600;color:var(--ink)' }), cb = el('input', { type: 'checkbox', id: 'pressUse' });
-  cb.checked = !!p.use; cb.onchange = () => { p.use = cb.checked; DIRTY = true; updTitle(); save(); TOCC = null; renderTabs(); const g = $('pressGrid'); if (g) g.classList.toggle('unused', !p.use); };
+  cb.checked = !!p.use; cb.onchange = () => { p.use = cb.checked; DIRTY = true; updTitle(); save(); TOCC = null; renderTabs(); const g = $('pressGrid'); if (g) g.classList.toggle('unused', !p.use); schedulePressTabs(); };
   lab.append(cb, ' ' + T('useP')); top.append(el('div', {}, T('tabNoteP')), lab);
   pageWrap.append(top);
   const grid = el('div', { class: 'pgrid' + (p.use ? '' : ' unused'), id: 'pressGrid' });
@@ -3019,7 +3077,7 @@ function renderPress() {
   const inp = el('section', { class: 'inputs' }), pan = el('div', { class: 'panel' });
   pan.append(el('h2', {}, `<span class="num">1</span><span>${T('pInputs')}</span>`));
   const g = el('div', { class: 'g' });
-  const upd = () => { DIRTY = true; updTitle(); save(); TOCC = null; drawPressResults(); renderTabs(); };
+  const upd = () => { DIRTY = true; updTitle(); save(); TOCC = null; drawPressResults(); renderTabs(); schedulePressTabs(); usingNote(); };
   const mkSel = (key, opts, label) => { const s = el('select', { id: 'p_' + key }); opts.forEach(([v, t]) => { const o = el('option', { value: v }); o.textContent = t; s.append(o); }); s.value = p[key]; s.onchange = () => { p[key] = s.value; upd(); }; g.append(field(label, s)); };
   const mkNum = (key, label, to, from) => { const i = el('input', { type: 'number', step: 'any', id: 'p_' + key }); i.value = Number(to(p[key]).toPrecision(6)); i.oninput = () => { const v = parseFloat(i.value); if (isFinite(v)) { p[key] = from(v); upd(); } }; g.append(field(label, i)); };
   const fL = Q.L()[0];
@@ -3032,10 +3090,35 @@ function renderPress() {
   mkSel('cond', [['normal', T('cond_normal')], ['liquid', T('cond_liquid')]], T('pCond'));
   pan.append(g, el('div', { class: 'note mt' }, T('pNote')));
   inp.append(pan);
+  // 帶入各頁載重（牆模）
+  const ap = el('div', { class: 'panel' });
+  ap.append(el('h2', {}, `<span class="num">2</span><span>${T('pApply')}</span>`));
+  const bar = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' });
+  const ba = el('button', { class: 'pri', id: 'pressApply' }, T('pApply')), br = el('button', { id: 'pressRevert' }, T('pRevert'));
+  ba.onclick = () => {
+    p.use = true; const cb2 = $('pressUse'); if (cb2) cb2.checked = true; const g2 = $('pressGrid'); if (g2) g2.classList.remove('unused');
+    for (let i = 0; i < NBT; i++) { const t = PROJ.tabs[i]; t.slab = { ...SLAB0, ...(t.slab || {}), on: true, src: 'press', noD: false, noL: false }; }
+    DIRTY = true; updTitle(); save(); TOCC = null; rerunPressTabs(); usingNote();
+    toast(T('pApplied', { list: pressTabs().map(i => T('tab' + i)).join('、') }));
+  };
+  br.onclick = () => {
+    pressTabs().forEach(i => { PROJ.tabs[i].slab.src = 'slab'; });
+    DIRTY = true; updTitle(); save(); TOCC = null;
+    const act = PROJ.active; for (let i = 0; i < NBT; i++) { S = PROJ.tabs[i]; RES = null; lastDC = null; try { run(); } catch (e) { } }
+    S = PROJ.tabs[act]; RES = null; lastDC = null; try { if (!PROJ.col) renderInputs(); run(); } catch (e) { } renderTabs(); usingNote(); toast(T('pReverted'));
+  };
+  bar.append(ba, br);
+  const un_ = el('div', { class: 'note mt', id: 'pressUsing' });
+  ap.append(bar, el('div', { class: 'note mt' }, T('pApplyHint')), un_);
+  inp.append(ap);
   // 結果
   const out = el('section', { id: 'pressOut' });
   grid.append(inp, out); pageWrap.append(grid);
-  drawPressResults();
+  drawPressResults(); usingNote();
+}
+function usingNote() {
+  const e = $('pressUsing'); if (!e) return; const idx = pressTabs();
+  e.textContent = idx.length ? T('pUsingList', { list: idx.map(i => T('tab' + i)).join('、') }) : T('pUsingNone');
 }
 function drawPressResults() {
   const box = $('pressOut'); if (!box) return;
@@ -3075,13 +3158,14 @@ switchTab = function (i) {
   _switchTab_p(i);
 };
 const _refreshProject_p = refreshProject;
-refreshProject = function () { ensurePress(); _refreshProject_p(); if (PROJ.special === 'press') { showArea(); renderPress(); } };
+refreshProject = function () { ensurePress(); _refreshProject_p(); rerunPressTabs(); if (PROJ.special === 'press') { showArea(); renderPress(); } };
 const _refreshAll_p = refreshAll;
 refreshAll = function () { _refreshAll_p(); if (PROJ.special === 'press') renderPress(); };
 $('lang').addEventListener('change', () => { if (PROJ.special === 'press') renderPress(); renderTabs(); });
 ensurePress();
 if (PROJ.special === 'press') { showArea(); renderPress(); }
 renderTabs();
+rerunPressTabs();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="auth.js"></script>

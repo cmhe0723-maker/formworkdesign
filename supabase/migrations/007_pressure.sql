@@ -7,3 +7,7 @@
 
 alter table public.projects
   add column if not exists pressure jsonb;
+
+-- 各梁頁自動均佈載重的來源：slab = 樓版載重（頂版模板）、press = 混凝土側壓力（牆模）
+alter table public.beam_tabs
+  add column if not exists slab_src text not null default 'slab';
