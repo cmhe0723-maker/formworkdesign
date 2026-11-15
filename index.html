@@ -118,6 +118,7 @@ input[type=text]{font:inherit;font-size:13px;padding:5px 7px;border:1px solid #c
 #tabNote{padding:8px 20px 0;font-size:12.5px;color:var(--sub)}
 main.unused .inputs,main.unused > section:last-child{opacity:.45}
 #colWrap.unused{opacity:.45}
+.pcond .chk{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:13px;margin:3px 0}
 .pgrid{display:grid;grid-template-columns:minmax(400px,480px) 1fr;gap:16px;align-items:start}
 @media(max-width:1080px){.pgrid{grid-template-columns:1fr}}
 .pgrid.unused{opacity:.45}
@@ -1999,7 +2000,7 @@ async function buildReportPDF(r, progress, opts = {}) {
       [T('pType'), T(pp.type === 'col' ? 'pCol' : 'pWall')],
       [T('pH', { u: un('L') }), n4(pp.H * fL)], [T('pR', { u: un('L') }), n4(pp.R * fL)],
       [T('pT', { u: pT.u() }), n4(pT.to(pp.T))], [T('pRho', { u: pRho.u() }), n4(pRho.to(pp.rho))],
-      [T('pCc'), T('cc_' + pp.cc)], [T('pCond'), T('cond_' + pp.cond)],
+      [T('pCc'), T('cc_' + pp.cc)], [T('pCond'), pressCondText(pp)],
     ], { aligns: ['left', 'left'] });
     if (c.err) L.text(c.err, { sz: 17, col: '#9b3415' });
     else {
@@ -2919,7 +2920,10 @@ if (PROJ.active !== 3 && PROJ.tabs[3].tie && PROJ.tabs[3].tie.on) {
 </script>
 <script>// ===================== 混凝土側壓力計算（ACI 347R-14 §4.2）=====================
 // 內部單位：H、R 以 m、m/h；T 以 °C；ρ 以 kg/m³；壓力以 kPa（kN/m²）；側推力以 kN/m
-const PRESS0 = { use: false, type: 'wall', H: 3.0, R: 2.0, T: 20, rho: 2400, cc: '1.0', cond: 'normal' };
+// 澆置條件：slump 坍度 > 175 mm、scc 自充填、extvib 模板外部振動、revib 再振動 → 液壓全值；
+// pump 由底部泵送 → 液壓全值 × (1 + surge%)（脈衝壓力加成，預設 25%）
+const PRESS0 = { use: false, type: 'wall', H: 3.0, R: 2.0, T: 20, rho: 2400, cc: '1.0', slump: false, scc: false, extvib: false, revib: false, pump: false, surge: 25 };
+const LIQ_KEYS = ['slump', 'scc', 'extvib', 'revib'];
 const G0 = 9.80665;
 const CC_OPTS = ['1.0', '1.2a', '1.2b', '1.4a', '1.4b'];
 Object.assign(DICT, {
@@ -2941,8 +2945,18 @@ Object.assign(DICT, {
   'cc_1.4a': ['其他水泥或摻料（爐石 < 70%、飛灰 < 40%），含緩凝劑（Cc = 1.4）', 'Other types or blends (< 70% slag, < 40% fly ash) with a retarder (Cc = 1.4)'],
   'cc_1.4b': ['摻料含爐石 ≥ 70% 或飛灰 ≥ 40%（Cc = 1.4）', 'Blends with ≥ 70% slag or ≥ 40% fly ash (Cc = 1.4)'],
   pCond: ['澆置條件', 'Placement conditions'],
+  pCondHint: ['未勾選任何條件時，視為坍度 ≤ 175 mm、一般內部振動（振動深度 ≤ 1.2 m），依公式計算；勾選任一項即採液壓全值。', 'With nothing ticked: slump ≤ 175 mm and normal internal vibration (depth ≤ 1.2 m), so the formulas apply; any ticked item uses the full liquid head.'],
+  cond_slump: ['坍度超過 175 mm', 'Slump over 175 mm'],
+  cond_scc: ['自充填混凝土（SCC）', 'Self-consolidating concrete (SCC)'],
+  cond_extvib: ['使用模板外部振動', 'External form vibration'],
+  cond_revib: ['再振動', 'Revibration'],
+  cond_pump: ['由底部泵送（液壓全值 + 脈衝壓力）', 'Pumped from the base (full liquid head + surge)'],
+  pSurge: ['脈衝壓力加成（%）', 'Surge allowance (%)'],
+  pWhyLiqList: ['澆置條件：{list}，採液壓全值。', 'Placement conditions: {list}; full liquid head is used.'],
+  pWhyPump: ['由底部泵送，採液壓全值並加計脈衝壓力 {k}%。', 'Pumped from the base: full liquid head plus a {k}% surge allowance.'],
+  pPumpEq: ['Pmax = ρgh × (1 + {k}%) = {l} kPa × {f} = {p} kPa', 'Pmax = ρgh × (1 + {k}%) = {l} kPa × {f} = {p} kPa'],
+  gPump: ['液壓全值 + 脈衝壓力', 'full liquid head + surge'],
   cond_normal: ['坍度 ≤ 175 mm，一般內部振動（振動深度 ≤ 1.2 m）', 'Slump ≤ 175 mm, normal internal vibration (depth ≤ 1.2 m)'],
-  cond_liquid: ['自充填混凝土、坍度 > 175 mm、外部振動、再振動或由底部泵送', 'SCC, slump > 175 mm, external vibration, revibration, or pumped from the base'],
   pResult: ['計算結果', 'Results'],
   pPmax: ['設計側壓力 Pmax', 'Design lateral pressure Pmax'],
   pHc: ['液壓區深度 hc', 'Hydrostatic depth hc'],
@@ -2956,7 +2970,6 @@ Object.assign(DICT, {
   pEqA: ['ACI 347R-14 式 (4.2.2.1a)', 'ACI 347R-14 Eq. (4.2.2.1a)'],
   pEqB: ['ACI 347R-14 式 (4.2.2.1b)', 'ACI 347R-14 Eq. (4.2.2.1b)'],
   pEqLiq: ['液壓全值 Pmax = ρgh', 'Full liquid head Pmax = ρgh'],
-  pWhyLiqCond: ['澆置條件不適用公式，採液壓全值。', 'Placement conditions are outside the formula limits; full liquid head is used.'],
   pWhyLiqRate: ['牆之澆置速率 R > 4.5 m/h，採液壓全值。', 'Wall with R > 4.5 m/h; full liquid head is used.'],
   pWhyA: ['{t}，適用式 (4.2.2.1a)：Pmax = Cw·Cc·[7.2 + 785R / (T + 17.8)]', '{t}: Eq. (4.2.2.1a) applies: Pmax = Cw·Cc·[7.2 + 785R / (T + 17.8)]'],
   pWhyB: ['牆，R = {r} m/h、H = {h} m，適用式 (4.2.2.1b)：Pmax = Cw·Cc·[7.2 + 1156 / (T + 17.8) + 244R / (T + 17.8)]', 'Wall, R = {r} m/h, H = {h} m: Eq. (4.2.2.1b) applies: Pmax = Cw·Cc·[7.2 + 1156 / (T + 17.8) + 244R / (T + 17.8)]'],
@@ -2987,17 +3000,20 @@ function pressCalc(p) {
   const Cw = rho < 2240 ? Math.max(0.8, 0.5 * (1 + rho / 2320)) : rho <= 2400 ? 1.0 : rho / 2320;
   const gam = rho * G0 / 1000, Pliq = gam * H, Pmin = 30 * Cw;    // kN/m³、kPa
   let eq = null, why = '', Pcalc = null;
-  if (p.cond !== 'normal') why = T('pWhyLiqCond');
+  const liq = LIQ_KEYS.filter(k => p[k]), surge = Math.max(0, +p.surge || 0);
+  if (p.pump) why = T('pWhyPump', { k: fmt(surge, 0) }) + (liq.length ? '　' + T('pWhyLiqList', { list: liq.map(k => T('cond_' + k)).join('、') }) : '');
+  else if (liq.length) why = T('pWhyLiqList', { list: liq.map(k => T('cond_' + k)).join('、') });
   else if (p.type === 'wall' && R > 4.5) why = T('pWhyLiqRate');
   else if (p.type === 'col' || (R < 2.1 && H <= 4.2)) { eq = 'a'; Pcalc = Cw * Cc * (7.2 + 785 * R / (Tc + 17.8)); why = T('pWhyA', { t: T(p.type === 'col' ? 'pColA' : 'pWallA') }); }
   else { eq = 'b'; Pcalc = Cw * Cc * (7.2 + 1156 / (Tc + 17.8) + 244 * R / (Tc + 17.8)); why = T('pWhyB', { r: fmt(R, 2), h: fmt(H, 2) }); }
   let Pmax, gov;
   if (eq) { const lo = Math.max(Pcalc, Pmin); Pmax = Math.min(lo, Pliq); gov = Pmax === Pliq && Pliq < lo ? 'gLiq' : Pcalc >= Pmin ? 'gCalc' : 'gMin'; }
+  else if (p.pump) { Pmax = Pliq * (1 + surge / 100); gov = 'gPump'; }   // 三角形分布，底部最大
   else { Pmax = Pliq; gov = 'gLiq'; }
-  const hc = Math.min(H, Pmax / gam), F = Pmax * (H - hc) + 0.5 * Pmax * hc;
+  const hc = p.pump && !eq ? H : Math.min(H, Pmax / gam), F = Pmax * (H - hc) + 0.5 * Pmax * hc;
   // 作用點距底部：矩形段 (H−hc)/2，三角形段 (H−hc) + hc/3
   const ybar = F > 0 ? (Pmax * (H - hc) * (H - hc) / 2 + 0.5 * Pmax * hc * ((H - hc) + hc / 3)) / F : 0;
-  return { H, R, Tc, rho, Cc, Cw, gam, Pliq, Pmin, Pcalc, Pmax, gov, eq, why, hc, F, ybar };
+  return { H, R, Tc, rho, Cc, Cw, gam, Pliq, Pmin, Pcalc, Pmax, gov, eq, why, hc, F, ybar, pump: !!p.pump, surge };
 }
 
 // 側壓力分布圖（SVG）：縱軸深度（自頂部向下），橫軸壓力
@@ -3036,9 +3052,10 @@ function pressLines(c) {
       ? `Pmax = ${fmt(c.Cw, 3)} × ${fmt(c.Cc, 1)} × [7.2 + 785 × ${fmt(c.R, 2)} / (${fmt(c.Tc, 1)} + 17.8)] = ${kp(c.Pcalc)}`
       : `Pmax = ${fmt(c.Cw, 3)} × ${fmt(c.Cc, 1)} × [7.2 + 1156 / (${fmt(c.Tc, 1)} + 17.8) + 244 × ${fmt(c.R, 2)} / (${fmt(c.Tc, 1)} + 17.8)] = ${kp(c.Pcalc)}`);
   }
-  L.push(T('pLimits', { mn: fmt(c.Pmin, 2), mx: fmt(c.Pliq, 2) }) + `（ρg = ${fmt(c.gam, 3)} kN/m³ × H = ${fmt(c.H, 2)} m）`);
+  if (c.gov === 'gPump') L.push(`ρgh = ${fmt(c.gam, 3)} kN/m³ × ${fmt(c.H, 2)} m = ${kp(c.Pliq)}；` + T('pPumpEq', { k: fmt(c.surge, 0), l: fmt(c.Pliq, 2), f: fmt(1 + c.surge / 100, 3), p: fmt(c.Pmax, 2) }));
+  else L.push(T('pLimits', { mn: fmt(c.Pmin, 2), mx: fmt(c.Pliq, 2) }) + `（ρg = ${fmt(c.gam, 3)} kN/m³ × H = ${fmt(c.H, 2)} m）`);
   L.push(`Pmax = ${kp(c.Pmax)} = ${fq('p', c.Pmax)} ${un('p')}　${T('pGov', { g: T(c.gov) })}`);
-  L.push(`hc = Pmax / (ρg) = ${fmt(c.hc, 3)} m`);
+  L.push(c.gov === 'gPump' ? `p(z) = (1 + ${fmt(c.surge, 0)}%)·ρg·z，hc = H = ${fmt(c.hc, 3)} m` : `hc = Pmax / (ρg) = ${fmt(c.hc, 3)} m`);
   L.push(`F = Pmax·(H − hc) + ½·Pmax·hc = ${fmt(c.F, 2)} kN/m = ${fq('w', c.F)} ${un('w')}`);
   return L;
 }
@@ -3057,9 +3074,15 @@ function rerunPressTabs() {
 }
 let _pressTimer = null;
 const schedulePressTabs = () => { clearTimeout(_pressTimer); _pressTimer = setTimeout(rerunPressTabs, 250); };
+// 澆置條件說明（計算書用）
+function pressCondText(p) {
+  const on = [...LIQ_KEYS, 'pump'].filter(k => p[k]).map(k => k === 'pump' ? `${T('cond_pump')}（+${fmt(+p.surge || 0, 0)}%）` : T('cond_' + k));
+  return on.length ? on.join('、') : T('cond_normal');
+}
 function ensurePress() {
   // 在原物件上補齊預設值（不可替換物件，否則畫面上的修改會寫到舊物件）
   if (!PROJ.press || typeof PROJ.press !== 'object') PROJ.press = {};
+  if (PROJ.press.cond !== undefined) { if (PROJ.press.cond === 'liquid' && PROJ.press.slump === undefined) PROJ.press.slump = true; delete PROJ.press.cond; }
   for (const k in PRESS0) if (PROJ.press[k] === undefined) PROJ.press[k] = PRESS0[k];
   return PROJ.press;
 }
@@ -3087,7 +3110,19 @@ function renderPress() {
   mkNum('T', T('pT', { u: pT.u() }), pT.to, pT.from);
   mkNum('rho', T('pRho', { u: pRho.u() }), pRho.to, pRho.from);
   mkSel('cc', CC_OPTS.map(k => [k, T('cc_' + k)]), T('pCc'));
-  mkSel('cond', [['normal', T('cond_normal')], ['liquid', T('cond_liquid')]], T('pCond'));
+  {
+    const cg = el('div', { class: 'f pcond' }); cg.append(el('span', {}, T('pCond')));
+    const si = el('input', { type: 'number', step: 'any', min: 0, id: 'p_surge' }); si.value = p.surge; si.disabled = !p.pump;
+    si.oninput = () => { const v = parseFloat(si.value); if (isFinite(v) && v >= 0) { p.surge = v; upd(); } };
+    [...LIQ_KEYS, 'pump'].forEach(k => {
+      const l = el('label', { class: 'chk' }), c = el('input', { type: 'checkbox', id: 'p_' + k }); c.checked = !!p[k];
+      c.onchange = () => { p[k] = c.checked; if (k === 'pump') si.disabled = !c.checked; upd(); };
+      l.append(c, ' ' + T('cond_' + k)); cg.append(l);
+    });
+    const sl_ = el('label', { class: 'f', style: 'margin:4px 0 0 24px;max-width:220px' }); sl_.append(T('pSurge'), si); cg.append(sl_);
+    cg.append(el('div', { class: 'note' }, T('pCondHint')));
+    g.append(cg);
+  }
   pan.append(g, el('div', { class: 'note mt' }, T('pNote')));
   inp.append(pan);
   // 帶入各頁載重（牆模）
@@ -3129,7 +3164,7 @@ function drawPressResults() {
   card(T('pPmax'), `${fq('p', c.Pmax)} ${un('p')}`, T('pGov', { g: T(c.gov) }));
   card(T('pHc'), `${fq('L', c.hc)} ${un('L')}`, `H = ${fq('L', c.H)} ${un('L')}`);
   card(T('pF'), `${fq('w', c.F)} ${un('w')}`, `${T('pYbar')} ${fq('L', c.ybar)} ${un('L')}`);
-  card('Cw · Cc', `${fmt(c.Cw, 3)} · ${fmt(c.Cc, 1)}`, c.eq ? T(c.eq === 'a' ? 'pEqA' : 'pEqB') : T('pEqLiq'));
+  card('Cw · Cc', `${fmt(c.Cw, 3)} · ${fmt(c.Cc, 1)}`, c.eq ? T(c.eq === 'a' ? 'pEqA' : 'pEqB') : c.gov === 'gPump' ? `${T('gPump')}（+${fmt(c.surge, 0)}%）` : T('pEqLiq'));
   box.append(cards);
   const ch = el('div', { class: 'chart' }); ch.append(el('div', { class: 'hd' }, `<b>${T('pChart')}</b>`));
   const wrap = el('div', { style: 'font-family:var(--mono)' }); wrap.innerHTML = pressSVG(c); ch.append(wrap); box.append(ch);
