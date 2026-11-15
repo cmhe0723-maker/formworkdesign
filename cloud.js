@@ -109,6 +109,7 @@
       design_method: S.method === 'LRFD' ? 'LRFD' : 'ASD',
       lang: ['zh', 'en', 'th', 'id'].includes(S.lang) ? S.lang : 'zh',
       unit_force: u.F || 'kN', unit_length: u.L || 'm', unit_dim: u.d || 'mm', unit_stress: u.s || 'MPa',
+      pressure: PROJ.press || null,   // 混凝土側壓力計算頁設定
       report_name: r.name || '', report_org: r.org || '', report_title: r.title || '', report_item: r.item || '', report_no: r.no || '', report_designer: r.designer || '',
       report_date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || '') ? r.date : null,
       report_paper: r.paper || 'A4',
@@ -306,7 +307,7 @@
         project: {
           active: outActive, u: { F: p.unit_force, L: p.unit_length, d: p.unit_dim, s: p.unit_stress },
           rep, code: p.design_code, method: p.design_method,
-          tabs: outTabs, column: columnState2Obj(colR), attachments: atts,
+          tabs: outTabs, press: p.pressure || null, column: columnState2Obj(colR), attachments: atts,
         },
       };
       // 交給網頁原本的「開啟檔案」流程，沿用其驗證與正規化
