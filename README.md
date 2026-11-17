@@ -11,6 +11,7 @@
 | `index.html` | 主程式（GitHub Pages 首頁） |
 | `auth.js` | 登入畫面：限 @sucoot.com、忘記密碼、閒置 12 小時自動登出 |
 | `cloud.js` | 雲端專案：儲存、開啟、刪除（刪除限管理員） |
+| `sw.js` | 下載用 Service Worker：讓 Safari 下載的檔案帶正確檔名（只處理 `__dl/` 下載網址） |
 | `supabase/schema.sql` | 資料表、附件 Storage bucket、參考資料 |
 | `supabase/migrations/002_slab_flags.sql` | 樓版自動載重欄位 |
 | `supabase/migrations/003_auth_roles.sql` | 公司帳號限制、管理員／一般使用者權限 |
