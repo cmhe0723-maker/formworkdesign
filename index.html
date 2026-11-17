@@ -1863,7 +1863,12 @@ const DL_BROWSER = {
       const h = document.createElement('h3'); h.textContent = dlT('ready').replace('{f}', filename);
       const btnCss = 'display:inline-block;border-radius:6px;padding:9px 18px;text-decoration:none;font-weight:600;margin:6px 8px 6px 0;cursor:pointer';
       const a = document.createElement('a'); a.className = 'dlbtn'; a.textContent = dlT('click');
-      if (sw) a.href = sw.dl; else { a.href = dataDl; a.download = filename; }   // Service Worker 網址不可加 download 屬性（須為一般瀏覽才會經過它）
+      if (sw) {
+        // 在隱藏框架中開啟下載網址：目前分頁不會離開網頁（Service Worker 網址不可加 download 屬性）
+        let fr = document.querySelector('iframe[name="fwdlframe"]');
+        if (!fr) { fr = document.createElement('iframe'); fr.name = 'fwdlframe'; fr.title = 'download'; fr.setAttribute('aria-hidden', 'true'); fr.style.cssText = 'position:absolute;width:0;height:0;border:0;left:-9999px;top:0'; document.body.appendChild(fr); }
+        a.href = sw.dl; a.target = 'fwdlframe';
+      } else { a.href = dataDl; a.download = filename; }
       a.style.cssText = btnCss + ';background:var(--accent,#1f4e79);color:#fff;border:1px solid var(--accent,#1f4e79)';
       const row = document.createElement('div'); row.append(a);
       if (isPdf) {
