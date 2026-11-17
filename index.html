@@ -1863,12 +1863,9 @@ const DL_BROWSER = {
       const h = document.createElement('h3'); h.textContent = dlT('ready').replace('{f}', filename);
       const btnCss = 'display:inline-block;border-radius:6px;padding:9px 18px;text-decoration:none;font-weight:600;margin:6px 8px 6px 0;cursor:pointer';
       const a = document.createElement('a'); a.className = 'dlbtn'; a.textContent = dlT('click');
-      if (sw) {
-        // 在隱藏框架中開啟下載網址：目前分頁不會離開網頁（Service Worker 網址不可加 download 屬性）
-        let fr = document.querySelector('iframe[name="fwdlframe"]');
-        if (!fr) { fr = document.createElement('iframe'); fr.name = 'fwdlframe'; fr.title = 'download'; fr.setAttribute('aria-hidden', 'true'); fr.style.cssText = 'position:absolute;width:0;height:0;border:0;left:-9999px;top:0'; document.body.appendChild(fr); }
-        a.href = sw.dl; a.target = 'fwdlframe';
-      } else { a.href = dataDl; a.download = filename; }
+      // Safari：在新分頁開啟下載網址（由 Service Worker 附上檔名），下載開始後自動關閉該分頁，
+      // 原分頁不會離開網頁。無法使用 Service Worker 時改用 data URL（留在原頁，但檔名可能為 Unknown）。
+      if (sw) a.href = sw.dl; else { a.href = dataDl; a.download = filename; }
       a.style.cssText = btnCss + ';background:var(--accent,#1f4e79);color:#fff;border:1px solid var(--accent,#1f4e79)';
       const row = document.createElement('div'); row.append(a);
       if (isPdf) {
@@ -1892,7 +1889,15 @@ const DL_BROWSER = {
       const bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
       const cb = document.createElement('button'); cb.textContent = dlT('close');
       const done = () => { ov.remove(); resolve(); };
-      a.addEventListener('click', () => { st.textContent = dlT('started'); });
+      a.addEventListener('click', e => {
+        if (sw) {
+          e.preventDefault();
+          const w = window.open(sw.dl, '_blank');
+          if (!w) { st.textContent = dlT('popup'); return; }
+          setTimeout(() => { try { if (!w.closed) w.close(); } catch (er) { } }, 4000);
+        }
+        st.textContent = dlT('started');
+      });
       cb.onclick = done; ov.addEventListener('click', e => { if (e.target === ov) done(); });
       bar.append(cb); bx.append(h, row, st, note, bar); ov.append(bx); document.body.append(ov);
     };
