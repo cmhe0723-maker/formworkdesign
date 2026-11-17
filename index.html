@@ -1799,7 +1799,11 @@ const MIME_OF = f => /\.pdf$/i.test(f) ? 'application/pdf' : /\.json$/i.test(f) 
 const DL_TXT = {
   ready: ['檔案已產生：{f}', 'File ready: {f}'],
   click: ['⬇ 點此下載', '⬇ Download'],
-  hint: ['Safari 需由您點按才能下載。若開啟的是預覽畫面，請用「分享」或「檔案 › 儲存為」存檔。', 'Safari needs a click to download. If a preview opens instead, use Share or File › Save As.'],
+  hint: ['Safari 需由您點按才能下載，檔案會存到「下載項目」。', 'Safari needs a click to download; the file goes to your Downloads folder.'],
+  hintPdf: ['Safari 需由您點按才能下載，檔案會存到「下載項目」。若仍無法下載，請按「在新視窗預覽」，再從 PDF 檢視器的工具列或「檔案 › 儲存為」存檔。', 'Safari needs a click to download; the file goes to Downloads. If that fails, use “Open preview in a new window” and save from the PDF viewer or File › Save As.'],
+  preview: ['在新視窗預覽', 'Open preview in a new window'],
+  started: ['已開始下載，請查看「下載項目」；完成後可按「關閉」。', 'Download started; check your Downloads folder, then press Close.'],
+  popup: ['瀏覽器擋下了新視窗，請允許此網站的彈出式視窗後再試。', 'The browser blocked the new window; allow pop-ups for this site and try again.'],
   close: ['關閉', 'Close'],
 };
 const dlT = k => { let l = 'zh'; try { l = (typeof S !== 'undefined' && S && S.lang) || 'zh'; } catch (e) { } return DL_TXT[k][l === 'zh' ? 0 : 1]; };
@@ -1814,19 +1818,47 @@ const DL_BROWSER = {
       setTimeout(() => a.remove(), 1000); setTimeout(() => URL.revokeObjectURL(url), 60000);
       resolve(); return;
     }
-    // Safari：顯示下載按鈕
-    const ov = document.createElement('div'); ov.className = 'ovl'; ov.id = 'dlOvl';
-    const bx = document.createElement('div'); bx.className = 'dlg'; bx.style.maxWidth = '440px';
-    const h = document.createElement('h3'); h.textContent = dlT('ready').replace('{f}', filename);
-    const a = mkA(); a.className = 'dlbtn'; a.textContent = dlT('click');
-    a.style.cssText = 'display:inline-block;background:var(--accent,#1f4e79);color:#fff;border-radius:6px;padding:9px 18px;text-decoration:none;font-weight:600;margin:6px 0';
-    const note = document.createElement('div'); note.className = 'note'; note.style.marginTop = '8px'; note.textContent = dlT('hint');
-    const bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
-    const cb = document.createElement('button'); cb.textContent = dlT('close');
-    const done = () => { ov.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); resolve(); };
-    a.addEventListener('click', () => setTimeout(done, 300));
-    cb.onclick = done; ov.addEventListener('click', e => { if (e.target === ov) done(); });
-    bar.append(cb); bx.append(h, a, note, bar); ov.append(bx); document.body.append(ov);
+    // Safari：不使用 blob 暫存連結（部分版本點按後仍會出現 WebKitBlobResource 錯誤），
+    // 改以 data URL 直接內含檔案內容；類型設為 octet-stream 讓 Safari 直接存檔。
+    URL.revokeObjectURL(url);
+    const rd = new FileReader();
+    rd.onerror = () => resolve();
+    rd.onload = () => {
+      const b64 = String(rd.result).replace(/^data:[^;,]*;base64,/, '');
+      const dataDl = 'data:application/octet-stream;base64,' + b64;
+      const isPdf = /\.pdf$/i.test(filename);
+      const ov = document.createElement('div'); ov.className = 'ovl'; ov.id = 'dlOvl';
+      const bx = document.createElement('div'); bx.className = 'dlg'; bx.style.maxWidth = '460px';
+      const h = document.createElement('h3'); h.textContent = dlT('ready').replace('{f}', filename);
+      const btnCss = 'display:inline-block;border-radius:6px;padding:9px 18px;text-decoration:none;font-weight:600;margin:6px 8px 6px 0;cursor:pointer';
+      const a = document.createElement('a'); a.href = dataDl; a.download = filename; a.className = 'dlbtn'; a.textContent = dlT('click');
+      a.style.cssText = btnCss + ';background:var(--accent,#1f4e79);color:#fff;border:1px solid var(--accent,#1f4e79)';
+      const row = document.createElement('div'); row.append(a);
+      if (isPdf) {
+        // 備用：在新視窗以 Safari 內建 PDF 檢視器開啟，可從其工具列存檔
+        const pv = document.createElement('button'); pv.className = 'dlprev'; pv.textContent = dlT('preview');
+        pv.style.cssText = btnCss + ';background:#fff;color:var(--ink,#1d2329);border:1px solid #c9cec8;font:inherit;font-weight:600';
+        pv.onclick = () => {
+          const w = window.open('', '_blank');
+          if (!w) { st.textContent = dlT('popup'); return; }
+          w.document.title = filename;
+          w.document.body.style.margin = '0';
+          const em = w.document.createElement('embed'); em.type = 'application/pdf'; em.src = 'data:application/pdf;base64,' + b64;
+          em.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0';
+          w.document.body.appendChild(em);
+        };
+        row.append(pv);
+      }
+      const st = document.createElement('div'); st.className = 'note'; st.style.cssText = 'margin-top:6px;color:var(--accent,#1f4e79);font-weight:500;min-height:1.2em';
+      const note = document.createElement('div'); note.className = 'note'; note.style.marginTop = '8px'; note.textContent = dlT(isPdf ? 'hintPdf' : 'hint');
+      const bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
+      const cb = document.createElement('button'); cb.textContent = dlT('close');
+      const done = () => { ov.remove(); resolve(); };
+      a.addEventListener('click', () => { st.textContent = dlT('started'); });
+      cb.onclick = done; ov.addEventListener('click', e => { if (e.target === ov) done(); });
+      bar.append(cb); bx.append(h, row, st, note, bar); ov.append(bx); document.body.append(ov);
+    };
+    rd.readAsDataURL(blob);
   }),
 };
 window.DL_BROWSER = DL_BROWSER;   // 供鋼柱頁（iframe）共用
