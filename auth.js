@@ -123,23 +123,23 @@ html.fw-authed #authGate{display:none!important}
   function artSVG() {
     const props = [110, 260, 410], walers = [];
     for (let x = 72; x <= 448; x += 34) walers.push(x);
-    // 圓盤系統支撐架（側視，依實固 Ring System Scaffold 型錄）：比例約 1 m = 64 單位
+    // 圓盤系統支撐架（側視，依實固 Ring System Scaffold 型錄）：比例約 1 m = 48 單位
     // 由下而上：底板 140×140、底座螺桿與手輪（Jack Base）、基座套管（中央一個圓盤）、
     // 立桿 Ø60.2（圓盤間距 500 mm）、頂座螺桿與手輪、U 型頂座（U-Head Jack）
-    const RINGS = [353, 321, 289, 257, 225];             // 圓盤高度（第一個在基座套管上）
-    const LIFTS = [353, 289, 225];                       // 每 1.0 m 一層橫桿（含最下層基礎橫桿）
+    const RINGS = [353, 329, 305, 281, 257, 233, 209];   // 圓盤高度：間距 500 mm（第一個在基座套管上）
+    const LIFTS = [353, 281, 209];                       // 每 1.5 m 一層橫桿與斜撐（含最下層基礎橫桿）
     const ring = (x, y) => `<rect x="${x - 12}" y="${y - 1.8}" width="24" height="3.6" rx="1.2" fill="#1B2733"/>`;
     const shore = x => `<g>
       <path d="M${x - 15},166 V184 H${x + 15} V166" fill="none" stroke="#1B2733" stroke-width="2.2"/>
-      <rect x="${x - 2.2}" y="184" width="4.4" height="25" fill="#1B2733"/>
-      <rect x="${x - 9}" y="194" width="18" height="4" rx="1" fill="#1B2733"/>
-      <rect x="${x - 4.5}" y="209" width="9" height="138" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      <rect x="${x - 2.2}" y="184" width="4.4" height="15" fill="#1B2733"/>
+      <rect x="${x - 9}" y="189" width="18" height="4" rx="1" fill="#1B2733"/>
+      <rect x="${x - 4.5}" y="199" width="9" height="148" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
       <rect x="${x - 4.5}" y="347" width="9" height="13" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
       ${RINGS.map(y => ring(x, y)).join('')}
       <rect x="${x - 2.2}" y="360" width="4.4" height="23" fill="#1B2733"/>
       <rect x="${x - 9}" y="368" width="18" height="4" rx="1" fill="#1B2733"/>
       <rect x="${x - 13}" y="383" width="26" height="4" fill="#1B2733"/></g>`;
-    // 相鄰立桿之間：每層橫桿（兩端楔形插銷）＋斜撐；斜撐全部同向（左下往右上，跨高 1.0 m）
+    // 相鄰立桿之間：每層橫桿（兩端楔形插銷）＋斜撐；斜撐全部同向（左下往右上，跨高 1.5 m）
     const bays = props.slice(0, -1).map((x1, k) => {
       const x2 = props[k + 1], a = x1 + 12, b = x2 - 12;
       const ledger = y => `<rect x="${a}" y="${y - 2}" width="${b - a}" height="4" fill="#fff" stroke="#1B2733" stroke-width="1.1"/>`
