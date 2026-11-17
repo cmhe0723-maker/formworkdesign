@@ -25,7 +25,7 @@
     lbWaler:    ['貫材', 'Waler'],
     lbJoist:    ['次墊條', 'Secondary joist'],
     lbBearer:   ['主墊條', 'Primary bearer'],
-    lbShore:    ['支撐', 'Shoring'],
+    lbShore:    ['圓盤支撐架', 'Ringlock shoring'],
     tbName:     ['圖名', 'Title'],
     tbDraw:     ['模板支撐系統斷面示意', 'Formwork and shoring section'],
     tbOrg:      ['單位', 'By'],
@@ -123,12 +123,24 @@ html.fw-authed #authGate{display:none!important}
   function artSVG() {
     const props = [110, 260, 410], walers = [];
     for (let x = 72; x <= 448; x += 34) walers.push(x);
+    // 圓盤系統支撐架（側視）
+    const DISKS = [214, 254, 294, 334];                    // 立桿上圓盤高度
     const shore = x => `<g>
-      <rect x="${x - 15}" y="179" width="30" height="5" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-      <rect x="${x - 6}" y="184" width="12" height="118" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-      <rect x="${x - 8}" y="296" width="16" height="9" fill="#1B2733"/>
-      <rect x="${x - 3.5}" y="305" width="7" height="80" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-      <rect x="${x - 17}" y="385" width="34" height="5" fill="#1B2733"/></g>`;
+      <path d="M${x - 16},166 V184 H${x + 16} V166" fill="none" stroke="#1B2733" stroke-width="2"/>
+      <rect x="${x - 2}" y="184" width="4" height="14" fill="#1B2733"/>
+      <rect x="${x - 7}" y="190" width="14" height="4" fill="#1B2733"/>
+      <rect x="${x - 4.5}" y="198" width="9" height="162" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      ${DISKS.map(y => `<ellipse cx="${x}" cy="${y}" rx="12" ry="2.8" fill="#1B2733"/>`).join('')}
+      <rect x="${x - 2}" y="360" width="4" height="22" fill="#1B2733"/>
+      <rect x="${x - 7}" y="366" width="14" height="4" fill="#1B2733"/>
+      <rect x="${x - 16}" y="382" width="32" height="5" fill="#1B2733"/></g>`;
+    // 相鄰立桿之間：上下兩層橫桿與一支斜撐（兩跨方向相反）
+    const bays = props.slice(0, -1).map((x1, k) => {
+      const x2 = props[k + 1], a = x1 + 12, b = x2 - 12;
+      const ledger = y => `<rect x="${a}" y="${y - 2}" width="${b - a}" height="4" fill="#fff" stroke="#1B2733" stroke-width="1.1"/>`;
+      const diag = k % 2 === 0 ? `M${a},${DISKS[3]} L${b},${DISKS[0]}` : `M${a},${DISKS[0]} L${b},${DISKS[3]}`;
+      return `<g>${ledger(DISKS[0])}${ledger(DISKS[3])}<path d="${diag}" stroke="#1B2733" stroke-width="3.2"/><path d="${diag}" stroke="#fff" stroke-width="1.2"/></g>`;
+    }).join('');
     const leader = (x1, y1, y2, label, cls) => `<g class="ag-l ${cls}">
       <circle cx="${x1}" cy="${y1}" r="2.6" fill="#1B2733"/>
       <polyline points="${x1},${y1} 486,${y2} 500,${y2}" fill="none" stroke="#1B2733" stroke-width="1"/>
@@ -139,7 +151,7 @@ html.fw-authed #authGate{display:none!important}
   <defs><pattern id="agHatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <line x1="0" y1="0" x2="0" y2="9" stroke="#8E979D" stroke-width="1.2"/></pattern></defs>
   <g class="ag-l ag-l1"><line x1="40" y1="390" x2="480" y2="390" stroke="#1B2733" stroke-width="1.6"/>${ground}</g>
-  <g class="ag-l ag-l2">${props.map(shore).join('')}</g>
+  <g class="ag-l ag-l2">${bays}${props.map(shore).join('')}</g>
   <g class="ag-l ag-l3">${props.map(x => `<rect x="${x - 13}" y="151" width="26" height="28" fill="#1F4E79" stroke="#1B2733" stroke-width="1.2"/>`).join('')}</g>
   <g class="ag-l ag-l4"><rect x="60" y="135" width="400" height="16" fill="#CFDCE7" stroke="#1B2733" stroke-width="1.4"/></g>
   <g class="ag-l ag-l5">${walers.map(x => `<rect x="${x - 6}" y="123" width="12" height="12" fill="#CFDCE7" stroke="#1B2733" stroke-width="1.2"/>`).join('')}</g>
@@ -153,7 +165,7 @@ html.fw-authed #authGate{display:none!important}
   ${leader(448, 129, 138, tr('lbWaler'), 'ag-l8')}
   ${leader(452, 143, 164, tr('lbJoist'), 'ag-l8')}
   ${leader(423, 168, 190, tr('lbBearer'), 'ag-l8')}
-  ${leader(416, 250, 250, tr('lbShore'), 'ag-l8')}
+  ${leader(414, 274, 274, tr('lbShore'), 'ag-l8')}
   <g class="ag-tb ag-l ag-l8" font-size="12">
     <rect x="318" y="416" width="262" height="48" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
     <line x1="318" y1="440" x2="580" y2="440" stroke="#1B2733" stroke-width="1"/>
