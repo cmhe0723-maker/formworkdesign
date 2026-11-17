@@ -18,7 +18,18 @@
 
   const TXT = {
     title:      ['模板支撐系統結構分析設計程式', 'Formwork & Shoring Design'],
-    signInHint: ['請以公司帳號（@sucoot.com）登入', 'Sign in with your company account (@sucoot.com)'],
+    signInHint: ['使用實固公司帳號（@sucoot.com）登入', 'Sign in with your Sucoot account (@sucoot.com)'],
+    adminNote:  ['帳號由系統管理員建立，需要帳號或無法登入請洽管理員。', 'Accounts are created by the system administrator. Contact them if you need an account or cannot sign in.'],
+    lbSlab:     ['樓版混凝土', 'Slab concrete'],
+    lbPanel:    ['面板', 'Panel'],
+    lbWaler:    ['貫材', 'Waler'],
+    lbJoist:    ['次墊條', 'Secondary joist'],
+    lbBearer:   ['主墊條', 'Primary bearer'],
+    lbShore:    ['支撐', 'Shoring'],
+    tbName:     ['圖名', 'Title'],
+    tbDraw:     ['模板支撐系統斷面示意', 'Formwork and shoring section'],
+    tbOrg:      ['單位', 'By'],
+    tbOrgV:     ['實固股份有限公司', 'Sucoot Co., Ltd.'],
     email:      ['電子郵件', 'Email'],
     password:   ['密碼', 'Password'],
     signIn:     ['登入', 'Sign in'],
@@ -56,17 +67,47 @@
   css.textContent = `
 html:not(.fw-authed) body > *:not(#authGate){display:none!important}
 html.fw-authed #authGate{display:none!important}
-#authGate{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:16px;background:var(--bg,#f4f5f2);overflow:auto}
-#authGate .ag-card{background:#fff;border:1px solid var(--line,#dde1dc);border-radius:12px;padding:24px 22px;width:min(380px,100%);box-shadow:0 10px 30px rgba(0,0,0,.08)}
-#authGate h2{margin:0 0 4px;font-size:18px;color:var(--accent,#1f4e79)}
-#authGate .ag-sub{margin:0 0 16px;font-size:13px;color:var(--sub,#5d6670)}
-#authGate label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--sub,#5d6670);margin-bottom:10px}
-#authGate input{font:inherit;font-size:14px;padding:8px 10px;border:1px solid #c9cec8;border-radius:6px;width:100%;box-sizing:border-box}
-#authGate .ag-btn{width:100%;padding:9px;font-size:14px;margin-top:4px}
-#authGate .ag-msg{min-height:1.4em;font-size:12.5px;margin:6px 0 2px;color:#9b3415}
-#authGate .ag-msg.ok{color:#1e7b3a}
-#authGate .ag-link{background:none;border:0;padding:0;color:var(--accent,#1f4e79);cursor:pointer;font-size:12.5px;text-decoration:underline}
-#authGate .ag-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+#authGate{--ag-navy:#1F4E79;--ag-navy2:#163C5E;--ag-paper:#E8EEF2;--ag-ink:#1B2733;--ag-muted:#4A5866;--ag-line:#B9C4CC;--ag-amber:#D9A01E;--ag-concrete:#8E979D;--ag-err:#B3261E;--ag-ok:#1E6B3A;
+  position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,1fr);background:#fff;color:var(--ag-ink);overflow:auto;
+  font-family:"Noto Sans TC","Noto Sans",system-ui,sans-serif}
+#authGate .ag-art{position:relative;display:grid;place-items:center;padding:40px 32px;min-height:100%;box-sizing:border-box;
+  background-color:var(--ag-paper);
+  background-image:linear-gradient(#CBD6DE 1px,transparent 1px),linear-gradient(90deg,#CBD6DE 1px,transparent 1px),linear-gradient(#DCE4EA 1px,transparent 1px),linear-gradient(90deg,#DCE4EA 1px,transparent 1px);
+  background-size:60px 60px,60px 60px,12px 12px,12px 12px;background-position:-1px -1px}
+#authGate .ag-draw{width:min(720px,94%);height:auto;display:block;overflow:visible}
+#authGate .ag-draw text{font-family:"Noto Sans TC","Noto Sans",system-ui,sans-serif;fill:var(--ag-ink)}
+#authGate .ag-pane{display:flex;align-items:center;padding:56px clamp(28px,5vw,64px);box-sizing:border-box}
+#authGate .ag-form{width:100%;max-width:360px}
+#authGate .ag-title{margin:0 0 10px;font-size:clamp(23px,2.3vw,28px);line-height:1.3;font-weight:700;letter-spacing:.01em}
+#authGate .ag-title span{display:inline-block}
+#authGate .ag-sub{margin:0 0 28px;font-size:14.5px;line-height:1.6;color:var(--ag-muted);text-wrap:pretty}
+#authGate .ag-field{display:block;margin:0 0 16px;font-size:13.5px;font-weight:500;color:var(--ag-ink)}
+#authGate .ag-field input{display:block;width:100%;box-sizing:border-box;margin-top:6px;height:44px;padding:0 12px;font:inherit;font-size:15px;font-weight:400;color:var(--ag-ink);
+  background:#fff;border:1.5px solid var(--ag-line);border-radius:4px;transition:border-color .12s}
+#authGate .ag-field input::placeholder{color:#8C99A4}
+#authGate .ag-field input:focus{outline:none;border-color:var(--ag-navy);box-shadow:0 0 0 3px rgba(31,78,121,.18)}
+#authGate .ag-btn{display:block;width:100%;height:46px;margin-top:6px;font:inherit;font-size:15px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--ag-navy);border:0;border-radius:4px;cursor:pointer}
+#authGate .ag-btn:hover{background:var(--ag-navy2)}
+#authGate .ag-btn:disabled{opacity:.7;cursor:progress}
+#authGate .ag-btn:focus-visible,#authGate .ag-link:focus-visible{outline:2px solid var(--ag-navy);outline-offset:3px}
+#authGate .ag-msg{min-height:1.5em;margin:2px 0 8px;font-size:13.5px;line-height:1.5;color:var(--ag-err)}
+#authGate .ag-msg.ok{color:var(--ag-ok)}
+#authGate .ag-link{background:none;border:0;padding:2px 0;font:inherit;font-size:14px;color:var(--ag-navy);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+#authGate .ag-foot{margin-top:16px}
+#authGate .ag-note{margin:28px 0 0;padding-top:16px;border-top:1px solid #E1E7EB;font-size:13px;line-height:1.6;color:var(--ag-muted);text-wrap:pretty}
+/* 載入時：構件依施工順序由下往上組立（地面 → 支撐 → 主墊條 → 次墊條 → 貫材 → 面板 → 樓版），只播放一次 */
+#authGate .ag-l{animation:ag-in .42s ease-out both}
+#authGate .ag-l1{animation-delay:.05s}#authGate .ag-l2{animation-delay:.2s}#authGate .ag-l3{animation-delay:.35s}#authGate .ag-l4{animation-delay:.5s}
+#authGate .ag-l5{animation-delay:.65s}#authGate .ag-l6{animation-delay:.8s}#authGate .ag-l7{animation-delay:.95s}#authGate .ag-l8{animation-delay:1.2s}
+@keyframes ag-in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){#authGate .ag-l{animation:none}}
+@media (max-width:860px){
+  #authGate{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #authGate .ag-art{min-height:0;padding:20px 16px 12px}
+  #authGate .ag-draw{width:min(520px,100%)}
+  #authGate .ag-tb{display:none}
+  #authGate .ag-pane{align-items:flex-start;padding:28px 20px 40px}
+}
 #authUser{display:flex;align-items:center;gap:6px;font-size:12.5px;color:inherit;opacity:.9;max-width:260px}
 #authUser .au-mail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #authUser .au-role{font-size:11px;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);white-space:nowrap}`;
@@ -78,22 +119,78 @@ html.fw-authed #authGate{display:none!important}
   const mount = () => { if (!gate.isConnected) document.body.appendChild(gate); };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
+  // 模板支撐系統斷面示意（由上而下：樓版、面板、貫材、次墊條、主墊條、支撐）
+  function artSVG() {
+    const props = [110, 260, 410], walers = [];
+    for (let x = 72; x <= 448; x += 34) walers.push(x);
+    const shore = x => `<g>
+      <rect x="${x - 15}" y="179" width="30" height="5" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      <rect x="${x - 6}" y="184" width="12" height="118" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      <rect x="${x - 8}" y="296" width="16" height="9" fill="#1B2733"/>
+      <rect x="${x - 3.5}" y="305" width="7" height="80" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      <rect x="${x - 17}" y="385" width="34" height="5" fill="#1B2733"/></g>`;
+    const leader = (x1, y1, y2, label, cls) => `<g class="ag-l ${cls}">
+      <circle cx="${x1}" cy="${y1}" r="2.6" fill="#1B2733"/>
+      <polyline points="${x1},${y1} 486,${y2} 500,${y2}" fill="none" stroke="#1B2733" stroke-width="1"/>
+      <text x="506" y="${y2 + 5}" font-size="16" font-weight="500">${esc(label)}</text></g>`;
+    let ground = '';
+    for (let x = 52; x <= 470; x += 12) ground += `<line x1="${x}" y1="390" x2="${x - 9}" y2="400" stroke="#8E979D" stroke-width="1"/>`;
+    return `<svg class="ag-draw" viewBox="-36 0 636 470" role="img" aria-label="${esc(tr('tbDraw'))}">
+  <defs><pattern id="agHatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="9" stroke="#8E979D" stroke-width="1.2"/></pattern></defs>
+  <g class="ag-l ag-l1"><line x1="40" y1="390" x2="480" y2="390" stroke="#1B2733" stroke-width="1.6"/>${ground}</g>
+  <g class="ag-l ag-l2">${props.map(shore).join('')}</g>
+  <g class="ag-l ag-l3">${props.map(x => `<rect x="${x - 13}" y="151" width="26" height="28" fill="#1F4E79" stroke="#1B2733" stroke-width="1.2"/>`).join('')}</g>
+  <g class="ag-l ag-l4"><rect x="60" y="135" width="400" height="16" fill="#CFDCE7" stroke="#1B2733" stroke-width="1.4"/></g>
+  <g class="ag-l ag-l5">${walers.map(x => `<rect x="${x - 6}" y="123" width="12" height="12" fill="#CFDCE7" stroke="#1B2733" stroke-width="1.2"/>`).join('')}</g>
+  <g class="ag-l ag-l6"><rect x="60" y="116" width="400" height="7" fill="#D9A01E" stroke="#1B2733" stroke-width="1.2"/></g>
+  <g class="ag-l ag-l7"><rect x="60" y="70" width="400" height="46" fill="url(#agHatch)" stroke="#1B2733" stroke-width="1.6"/>
+    <line x1="44" y1="70" x2="44" y2="116" stroke="#1B2733" stroke-width="1"/>
+    <line x1="38" y1="70" x2="54" y2="70" stroke="#1B2733" stroke-width="1"/><line x1="38" y1="116" x2="54" y2="116" stroke="#1B2733" stroke-width="1"/>
+    <text x="34" y="97" font-size="12.5" text-anchor="end">t = 250 mm</text></g>
+  ${leader(430, 88, 84, tr('lbSlab'), 'ag-l8')}
+  ${leader(446, 119.5, 112, tr('lbPanel'), 'ag-l8')}
+  ${leader(448, 129, 138, tr('lbWaler'), 'ag-l8')}
+  ${leader(452, 143, 164, tr('lbJoist'), 'ag-l8')}
+  ${leader(423, 168, 190, tr('lbBearer'), 'ag-l8')}
+  ${leader(416, 250, 250, tr('lbShore'), 'ag-l8')}
+  <g class="ag-tb ag-l ag-l8" font-size="12">
+    <rect x="318" y="416" width="262" height="48" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+    <line x1="318" y1="440" x2="580" y2="440" stroke="#1B2733" stroke-width="1"/>
+    <line x1="362" y1="416" x2="362" y2="464" stroke="#1B2733" stroke-width="1"/>
+    <text x="340" y="432" text-anchor="middle" fill="#4A5866">${esc(tr('tbName'))}</text>
+    <text x="372" y="432" font-weight="500">${esc(tr('tbDraw'))}</text>
+    <text x="340" y="456" text-anchor="middle" fill="#4A5866">${esc(tr('tbOrg'))}</text>
+    <text x="372" y="456" font-weight="500">${esc(tr('tbOrgV'))}</text></g>
+</svg>`;
+  }
+  // 左側圖面只建立一次（切換登入／忘記密碼等畫面時不重播動畫）
+  function shell() {
+    let pane = gate.querySelector('.ag-pane');
+    if (!pane) {
+      gate.innerHTML = `<div class="ag-art" aria-hidden="true">${artSVG()}</div><main class="ag-pane"></main>`;
+      pane = gate.querySelector('.ag-pane');
+    }
+    return pane;
+  }
+
   let VIEW = null;
   function show(view, msg, ok) {
     mount();
     VIEW = view;
     document.documentElement.classList.remove('fw-authed');
-    const card = (inner) => { gate.innerHTML = `<form class="ag-card" novalidate><h2>${esc(tr('title'))}</h2>${inner}</form>`; return gate.querySelector('form'); };
+    const card = (inner) => { const pane = shell(); const t = tr('title'), k = t.indexOf('系統') + 2; pane.innerHTML = `<form class="ag-form" novalidate><h1 class="ag-title">${k > 1 ? `<span>${esc(t.slice(0, k))}</span><span>${esc(t.slice(k))}</span>` : esc(t)}</h1>${inner}</form>`; return pane.querySelector('form'); };
     const msgHtml = `<div class="ag-msg${ok ? ' ok' : ''}" id="agMsg">${esc(msg || '')}</div>`;
     const setMsg = (m, good) => { const e = gate.querySelector('#agMsg'); e.textContent = m || ''; e.className = 'ag-msg' + (good ? ' ok' : ''); };
 
     if (view === 'login') {
       const f = card(`<p class="ag-sub">${esc(tr('signInHint'))}</p>
-        <label>${esc(tr('email'))}<input id="agEmail" type="email" autocomplete="username" placeholder="name${DOMAIN}" value="${esc(lsGet('fw-last-email') || '')}"></label>
-        <label>${esc(tr('password'))}<input id="agPass" type="password" autocomplete="current-password"></label>
+        <label class="ag-field">${esc(tr('email'))}<input id="agEmail" type="email" autocomplete="username" placeholder="name${DOMAIN}" value="${esc(lsGet('fw-last-email') || '')}"></label>
+        <label class="ag-field">${esc(tr('password'))}<input id="agPass" type="password" autocomplete="current-password"></label>
         ${msgHtml}
-        <button class="pri ag-btn" type="submit">${esc(tr('signIn'))}</button>
-        <div class="ag-foot"><button type="button" class="ag-link" id="agForgot">${esc(tr('forgot'))}</button><span></span></div>`);
+        <button class="ag-btn" type="submit">${esc(tr('signIn'))}</button>
+        <div class="ag-foot"><button type="button" class="ag-link" id="agForgot">${esc(tr('forgot'))}</button></div>
+        <p class="ag-note">${esc(tr('adminNote'))}</p>`);
       const em = f.querySelector('#agEmail'), pw = f.querySelector('#agPass'), btn = f.querySelector('.ag-btn');
       (em.value ? pw : em).focus();
       f.querySelector('#agForgot').onclick = () => show('forgot');
@@ -114,10 +211,10 @@ html.fw-authed #authGate{display:none!important}
 
     if (view === 'forgot') {
       const f = card(`<p class="ag-sub">${esc(tr('resetHint'))}</p>
-        <label>${esc(tr('email'))}<input id="agEmail" type="email" autocomplete="username" placeholder="name${DOMAIN}" value="${esc(lsGet('fw-last-email') || '')}"></label>
+        <label class="ag-field">${esc(tr('email'))}<input id="agEmail" type="email" autocomplete="username" placeholder="name${DOMAIN}" value="${esc(lsGet('fw-last-email') || '')}"></label>
         ${msgHtml}
-        <button class="pri ag-btn" type="submit">${esc(tr('sendReset'))}</button>
-        <div class="ag-foot"><button type="button" class="ag-link" id="agBack">${esc(tr('back'))}</button><span></span></div>`);
+        <button class="ag-btn" type="submit">${esc(tr('sendReset'))}</button>
+        <div class="ag-foot"><button type="button" class="ag-link" id="agBack">${esc(tr('back'))}</button></div>`);
       const em = f.querySelector('#agEmail'), btn = f.querySelector('.ag-btn');
       em.focus();
       f.querySelector('#agBack').onclick = () => show('login');
@@ -135,10 +232,10 @@ html.fw-authed #authGate{display:none!important}
 
     if (view === 'newpw') {
       const f = card(`<p class="ag-sub">${esc(tr('newPwTitle'))}</p>
-        <label>${esc(tr('newPw'))}<input id="agPw1" type="password" autocomplete="new-password"></label>
-        <label>${esc(tr('newPw2'))}<input id="agPw2" type="password" autocomplete="new-password"></label>
+        <label class="ag-field">${esc(tr('newPw'))}<input id="agPw1" type="password" autocomplete="new-password"></label>
+        <label class="ag-field">${esc(tr('newPw2'))}<input id="agPw2" type="password" autocomplete="new-password"></label>
         ${msgHtml}
-        <button class="pri ag-btn" type="submit">${esc(tr('savePw'))}</button>`);
+        <button class="ag-btn" type="submit">${esc(tr('savePw'))}</button>`);
       const p1 = f.querySelector('#agPw1'), p2 = f.querySelector('#agPw2'), btn = f.querySelector('.ag-btn');
       p1.focus();
       f.onsubmit = async e => {
@@ -157,7 +254,7 @@ html.fw-authed #authGate{display:none!important}
     }
 
     // 錯誤畫面（元件無法載入）
-    card(`<div class="ag-msg">${esc(msg || '')}</div>`);
+    card(`<p class="ag-msg">${esc(msg || '')}</p>`);
   }
 
   // ---------------- Supabase ----------------
