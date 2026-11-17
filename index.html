@@ -1804,9 +1804,39 @@ const DL_TXT = {
   preview: ['在新視窗預覽', 'Open preview in a new window'],
   started: ['已開始下載，請查看「下載項目」；完成後可按「關閉」。', 'Download started; check your Downloads folder, then press Close.'],
   popup: ['瀏覽器擋下了新視窗，請允許此網站的彈出式視窗後再試。', 'The browser blocked the new window; allow pop-ups for this site and try again.'],
+  noName: ['（此瀏覽器下載的檔名可能顯示為 Unknown，請自行改名並加上副檔名。）', '(The file may be named “Unknown”; rename it and add the extension.)'],
   close: ['關閉', 'Close'],
 };
 const dlT = k => { let l = 'zh'; try { l = (typeof S !== 'undefined' && S && S.lang) || 'zh'; } catch (e) { } return DL_TXT[k][l === 'zh' ? 0 : 1]; };
+// 下載用 Service Worker（sw.js）：讓 Safari 以正確檔名存檔
+const DL_SW = { ok: false };
+if ('serviceWorker' in navigator && window.isSecureContext && 'caches' in window) {
+  navigator.serviceWorker.register('sw.js', { scope: './' }).then(reg => {
+    const on = () => { DL_SW.ok = !!reg.active; };
+    on(); (reg.installing || reg.waiting || {}).onstatechange = on;
+    navigator.serviceWorker.ready.then(on);
+  }).catch(() => { });
+}
+// 把檔案放進快取並回傳下載與預覽網址（失敗時回傳 null）
+async function dlPrepare(blob, filename) {
+  if (!DL_SW.ok) return null;
+  try {
+    const c = await caches.open('fw-dl');
+    for (const k of await c.keys()) await c.delete(k);           // 只保留最新一個檔案
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const base = new URL('__dl/' + id + '/', location.href).href;
+    // 不支援 filename* 的舊瀏覽器用的備用檔名：去掉非 ASCII 字元，全為中文時改用 formwork
+    const ext = (filename.match(/\.[A-Za-z0-9]+$/) || [''])[0], stem = filename.slice(0, filename.length - ext.length);
+    const st0 = stem.replace(/[^\x20-\x7e]+/g, '').replace(/["\\]/g, '').replace(/^[\s_.-]+|[\s_.-]+$/g, '');
+    const ascii = (/[A-Za-z0-9]/.test(st0) ? st0 : 'formwork') + ext;
+    const disp = kind => `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+    const type = blob.type || MIME_OF(filename);
+    for (const kind of ['attachment', 'inline']) {
+      await c.put(base + kind, new Response(blob, { headers: { 'Content-Type': type, 'Content-Disposition': disp(kind), 'Cache-Control': 'no-store' } }));
+    }
+    return { dl: base + 'attachment', view: base + 'inline' };
+  } catch (e) { return null; }
+}
 const DL_BROWSER = {
   save: ({ filename, data }) => new Promise(resolve => {
     const type = (data instanceof Blob && data.type) ? data.type : MIME_OF(filename);
@@ -1823,15 +1853,17 @@ const DL_BROWSER = {
     URL.revokeObjectURL(url);
     const rd = new FileReader();
     rd.onerror = () => resolve();
-    rd.onload = () => {
+    rd.onload = async () => {
       const b64 = String(rd.result).replace(/^data:[^;,]*;base64,/, '');
+      const sw = await dlPrepare(blob, filename);                 // 可用時：網址附正確檔名
       const dataDl = 'data:application/octet-stream;base64,' + b64;
       const isPdf = /\.pdf$/i.test(filename);
       const ov = document.createElement('div'); ov.className = 'ovl'; ov.id = 'dlOvl';
       const bx = document.createElement('div'); bx.className = 'dlg'; bx.style.maxWidth = '460px';
       const h = document.createElement('h3'); h.textContent = dlT('ready').replace('{f}', filename);
       const btnCss = 'display:inline-block;border-radius:6px;padding:9px 18px;text-decoration:none;font-weight:600;margin:6px 8px 6px 0;cursor:pointer';
-      const a = document.createElement('a'); a.href = dataDl; a.download = filename; a.className = 'dlbtn'; a.textContent = dlT('click');
+      const a = document.createElement('a'); a.className = 'dlbtn'; a.textContent = dlT('click');
+      if (sw) a.href = sw.dl; else { a.href = dataDl; a.download = filename; }   // Service Worker 網址不可加 download 屬性（須為一般瀏覽才會經過它）
       a.style.cssText = btnCss + ';background:var(--accent,#1f4e79);color:#fff;border:1px solid var(--accent,#1f4e79)';
       const row = document.createElement('div'); row.append(a);
       if (isPdf) {
@@ -1839,6 +1871,7 @@ const DL_BROWSER = {
         const pv = document.createElement('button'); pv.className = 'dlprev'; pv.textContent = dlT('preview');
         pv.style.cssText = btnCss + ';background:#fff;color:var(--ink,#1d2329);border:1px solid #c9cec8;font:inherit;font-weight:600';
         pv.onclick = () => {
+          if (sw) { const w0 = window.open(sw.view, '_blank'); if (!w0) st.textContent = dlT('popup'); return; }
           const w = window.open('', '_blank');
           if (!w) { st.textContent = dlT('popup'); return; }
           w.document.title = filename;
@@ -1850,7 +1883,7 @@ const DL_BROWSER = {
         row.append(pv);
       }
       const st = document.createElement('div'); st.className = 'note'; st.style.cssText = 'margin-top:6px;color:var(--accent,#1f4e79);font-weight:500;min-height:1.2em';
-      const note = document.createElement('div'); note.className = 'note'; note.style.marginTop = '8px'; note.textContent = dlT(isPdf ? 'hintPdf' : 'hint');
+      const note = document.createElement('div'); note.className = 'note'; note.style.marginTop = '8px'; note.textContent = dlT(isPdf ? 'hintPdf' : 'hint') + (sw ? '' : ' ' + dlT('noName'));
       const bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
       const cb = document.createElement('button'); cb.textContent = dlT('close');
       const done = () => { ov.remove(); resolve(); };
