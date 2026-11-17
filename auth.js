@@ -123,23 +123,33 @@ html.fw-authed #authGate{display:none!important}
   function artSVG() {
     const props = [110, 260, 410], walers = [];
     for (let x = 72; x <= 448; x += 34) walers.push(x);
-    // 圓盤系統支撐架（側視）
-    const DISKS = [214, 254, 294, 334];                    // 立桿上圓盤高度
+    // 圓盤系統支撐架（側視，依實固 Ring System Scaffold 型錄）：比例約 1 m = 64 單位
+    // 由下而上：底板 140×140、底座螺桿與手輪（Jack Base）、基座套管（中央一個圓盤）、
+    // 立桿 Ø60.2（圓盤間距 500 mm）、頂座螺桿與手輪、U 型頂座（U-Head Jack）
+    const RINGS = [353, 321, 289, 257, 225];             // 圓盤高度（第一個在基座套管上）
+    const LIFTS = [353, 289, 225];                       // 每 1.0 m 一層橫桿（含最下層基礎橫桿）
+    const ring = (x, y) => `<rect x="${x - 12}" y="${y - 1.8}" width="24" height="3.6" rx="1.2" fill="#1B2733"/>`;
     const shore = x => `<g>
-      <path d="M${x - 16},166 V184 H${x + 16} V166" fill="none" stroke="#1B2733" stroke-width="2"/>
-      <rect x="${x - 2}" y="184" width="4" height="14" fill="#1B2733"/>
-      <rect x="${x - 7}" y="190" width="14" height="4" fill="#1B2733"/>
-      <rect x="${x - 4.5}" y="198" width="9" height="162" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-      ${DISKS.map(y => `<ellipse cx="${x}" cy="${y}" rx="12" ry="2.8" fill="#1B2733"/>`).join('')}
-      <rect x="${x - 2}" y="360" width="4" height="22" fill="#1B2733"/>
-      <rect x="${x - 7}" y="366" width="14" height="4" fill="#1B2733"/>
-      <rect x="${x - 16}" y="382" width="32" height="5" fill="#1B2733"/></g>`;
-    // 相鄰立桿之間：上下兩層橫桿與一支斜撐（兩跨方向相反）
+      <path d="M${x - 15},166 V184 H${x + 15} V166" fill="none" stroke="#1B2733" stroke-width="2.2"/>
+      <rect x="${x - 2.2}" y="184" width="4.4" height="25" fill="#1B2733"/>
+      <rect x="${x - 9}" y="194" width="18" height="4" rx="1" fill="#1B2733"/>
+      <rect x="${x - 4.5}" y="209" width="9" height="138" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      <rect x="${x - 4.5}" y="347" width="9" height="13" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
+      ${RINGS.map(y => ring(x, y)).join('')}
+      <rect x="${x - 2.2}" y="360" width="4.4" height="23" fill="#1B2733"/>
+      <rect x="${x - 9}" y="368" width="18" height="4" rx="1" fill="#1B2733"/>
+      <rect x="${x - 13}" y="383" width="26" height="4" fill="#1B2733"/></g>`;
+    // 相鄰立桿之間：每層橫桿（兩端楔形插銷）＋斜撐；斜撐全部同向（左下往右上，跨高 1.0 m）
     const bays = props.slice(0, -1).map((x1, k) => {
       const x2 = props[k + 1], a = x1 + 12, b = x2 - 12;
-      const ledger = y => `<rect x="${a}" y="${y - 2}" width="${b - a}" height="4" fill="#fff" stroke="#1B2733" stroke-width="1.1"/>`;
-      const diag = k % 2 === 0 ? `M${a},${DISKS[3]} L${b},${DISKS[0]}` : `M${a},${DISKS[0]} L${b},${DISKS[3]}`;
-      return `<g>${ledger(DISKS[0])}${ledger(DISKS[3])}<path d="${diag}" stroke="#1B2733" stroke-width="3.2"/><path d="${diag}" stroke="#fff" stroke-width="1.2"/></g>`;
+      const ledger = y => `<rect x="${a}" y="${y - 2}" width="${b - a}" height="4" fill="#fff" stroke="#1B2733" stroke-width="1.1"/>`
+        + `<rect x="${a - 1}" y="${y - 6}" width="2.6" height="10" fill="#1B2733"/><rect x="${b - 1.6}" y="${y - 6}" width="2.6" height="10" fill="#1B2733"/>`;
+      let g = LIFTS.map(ledger).join('');
+      for (let n = 0; n < LIFTS.length - 1; n++) {
+        const d = `M${a},${LIFTS[n]} L${b},${LIFTS[n + 1]}`;
+        g += `<path d="${d}" stroke="#1B2733" stroke-width="3.4" stroke-linecap="round"/><path d="${d}" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>`;
+      }
+      return `<g>${g}</g>`;
     }).join('');
     const leader = (x1, y1, y2, label, cls) => `<g class="ag-l ${cls}">
       <circle cx="${x1}" cy="${y1}" r="2.6" fill="#1B2733"/>
