@@ -80,6 +80,7 @@
     ['bH', 'box_h'], ['bB', 'box_b'], ['bt', 'box_t'], ['pD', 'pipe_d'], ['pt', 'pipe_t'],
     ['cA', 'custom_a'], ['cIx', 'custom_ix'], ['cIy', 'custom_iy'],
     ['L', 'length_x'], ['Ly', 'length_y'], ['Kx', 'kx'], ['Ky', 'ky'], ['PD', 'p_dead'], ['PL', 'p_live'],
+    ['Ptest', 'test_load'], ['FSt', 'test_fs'],   // 依破壞載重試驗報告檢核（試驗承載力值、安全係數）
   ];
   const COL_TEXT = [['pj', 'project_name'], ['mb', 'member_name'], ['dz', 'designer'], ['dt', 'design_date']];
   const COL_SELECTS = [['code', 'design_code'], ['method', 'design_method'], ['grade', 'grade'], ['secType', 'section_type'], ['shape', 'shape'], ['bc', 'boundary'], ['kb', 'k_basis']];
