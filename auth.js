@@ -17,45 +17,61 @@
   const SITE = location.origin + location.pathname;
 
   const TXT = {
-    title:      ['模板支撐系統結構分析設計程式', 'Formwork & Shoring Design'],
-    signInHint: ['使用實固公司帳號（@sucoot.com）登入', 'Sign in with your Sucoot account (@sucoot.com)'],
-    adminNote:  ['帳號由系統管理員建立，需要帳號或無法登入請洽管理員。', 'Accounts are created by the system administrator. Contact them if you need an account or cannot sign in.'],
-    lbSlab:     ['樓版混凝土', 'Slab concrete'],
-    lbPanel:    ['面板', 'Panel'],
-    lbWaler:    ['貫材(選用)', 'Waler (optional)'],
-    lbJoist:    ['次墊條', 'Secondary joist'],
-    lbBearer:   ['主墊條', 'Primary bearer'],
-    lbShore:    ['圓盤系統支撐架', 'Ring system shoring'],
-    tbName:     ['圖名', 'Title'],
-    tbDraw:     ['模板支撐系統斷面示意', 'Formwork and shoring section'],
-    tbOrg:      ['單位', 'By'],
-    tbOrgV:     ['實固股份有限公司', 'Sucoot Co., Ltd.'],
-    email:      ['電子郵件', 'Email'],
-    password:   ['密碼', 'Password'],
-    signIn:     ['登入', 'Sign in'],
-    signingIn:  ['登入中…', 'Signing in…'],
-    forgot:     ['忘記密碼？', 'Forgot password?'],
-    back:       ['返回登入', 'Back to sign in'],
-    sendReset:  ['寄送重設密碼信', 'Send reset email'],
-    resetHint:  ['輸入帳號信箱，我們會寄送重設密碼的連結。', 'Enter your email and we will send a password reset link.'],
-    resetSent:  ['若此信箱有帳號，稍後會收到重設密碼信，請點信中連結。', 'If this email has an account, a reset link is on its way.'],
-    newPwTitle: ['設定新密碼', 'Set a new password'],
-    newPw:      ['新密碼（至少 8 碼）', 'New password (min. 8 characters)'],
-    newPw2:     ['再輸入一次', 'Confirm password'],
-    savePw:     ['儲存新密碼', 'Save password'],
-    pwShort:    ['密碼至少需要 8 碼。', 'Password must be at least 8 characters.'],
-    pwMismatch: ['兩次輸入的密碼不一致。', 'Passwords do not match.'],
-    pwSaved:    ['密碼已更新。', 'Password updated.'],
-    badDomain:  ['只允許 @sucoot.com 的信箱登入。', 'Only @sucoot.com accounts can sign in.'],
-    badLogin:   ['帳號或密碼錯誤，或帳號已停用。', 'Wrong email or password, or the account is disabled.'],
-    idleOut:    ['閒置超過 12 小時，已自動登出，請重新登入。', 'Signed out after 12 hours of inactivity. Please sign in again.'],
-    noLib:      ['無法載入登入元件，請確認網路連線後重新整理。', 'Could not load the sign-in library. Check your connection and reload.'],
-    signOut:    ['登出', 'Sign out'],
-    admin:      ['管理員', 'Admin'],
-    linkBad:    ['連結已失效或已使用過，請重新申請。', 'This link is invalid or has expired. Please request a new one.'],
+    title:      ['模板支撐系統結構分析設計程式', 'Formwork & Shoring Design', 'โปรแกรมวิเคราะห์และออกแบบโครงสร้างระบบแบบหล่อและค้ำยัน', 'Program Analisis & Desain Struktur Bekisting dan Perancah'],
+    signInHint: ['使用實固公司帳號（@sucoot.com）登入', 'Sign in with your Sucoot account (@sucoot.com)', 'เข้าสู่ระบบด้วยบัญชี Sucoot (@sucoot.com)', 'Masuk dengan akun Sucoot (@sucoot.com)'],
+    adminNote:  ['帳號由系統管理員建立，需要帳號或無法登入請洽管理員。', 'Accounts are created by the system administrator. Contact them if you need an account or cannot sign in.', 'บัญชีสร้างโดยผู้ดูแลระบบ หากต้องการบัญชีหรือเข้าสู่ระบบไม่ได้ โปรดติดต่อผู้ดูแลระบบ', 'Akun dibuat oleh administrator sistem. Hubungi administrator jika perlu akun atau tidak bisa masuk.'],
+    lbSlab:     ['樓版混凝土', 'Slab concrete', 'คอนกรีตพื้น', 'Beton pelat'],
+    lbPanel:    ['面板', 'Panel', 'แผ่นแบบ', 'Panel'],
+    lbWaler:    ['貫材(選用)', 'Waler (optional)', 'คานกลาง (เลือกใช้)', 'Balok antara (opsional)'],
+    lbJoist:    ['次墊條', 'Secondary joist', 'ตงรอง', 'Gelagar sekunder'],
+    lbBearer:   ['主墊條', 'Primary bearer', 'คานรองหลัก', 'Gelagar utama'],
+    lbShore:    ['圓盤系統支撐架', 'Ring system shoring', 'นั่งร้านค้ำยันระบบริง', 'Perancah sistem ring'],
+    tbName:     ['圖名', 'Title', 'ชื่อแบบ', 'Judul'],
+    tbDraw:     ['模板支撐系統斷面示意', 'Formwork and shoring section', 'รูปตัดระบบแบบหล่อและค้ำยัน', 'Potongan bekisting dan perancah'],
+    tbOrg:      ['單位', 'By', 'จัดทำโดย', 'Oleh'],
+    tbOrgV:     ['實固股份有限公司', 'Sucoot Co., Ltd.', 'Sucoot Co., Ltd.', 'Sucoot Co., Ltd.'],
+    email:      ['電子郵件', 'Email', 'อีเมล', 'Email'],
+    password:   ['密碼', 'Password', 'รหัสผ่าน', 'Kata sandi'],
+    signIn:     ['登入', 'Sign in', 'เข้าสู่ระบบ', 'Masuk'],
+    signingIn:  ['登入中…', 'Signing in…', 'กำลังเข้าสู่ระบบ…', 'Sedang masuk…'],
+    forgot:     ['忘記密碼？', 'Forgot password?', 'ลืมรหัสผ่าน?', 'Lupa kata sandi?'],
+    back:       ['返回登入', 'Back to sign in', 'กลับไปหน้าเข้าสู่ระบบ', 'Kembali ke halaman masuk'],
+    sendReset:  ['寄送重設密碼信', 'Send reset email', 'ส่งอีเมลรีเซ็ตรหัสผ่าน', 'Kirim email reset kata sandi'],
+    resetHint:  ['輸入帳號信箱，我們會寄送重設密碼的連結。', 'Enter your email and we will send a password reset link.', 'กรอกอีเมลของบัญชี ระบบจะส่งลิงก์สำหรับรีเซ็ตรหัสผ่านให้', 'Masukkan email akun; kami akan mengirim tautan untuk reset kata sandi.'],
+    resetSent:  ['若此信箱有帳號，稍後會收到重設密碼信，請點信中連結。', 'If this email has an account, a reset link is on its way.', 'หากอีเมลนี้มีบัญชี จะได้รับอีเมลรีเซ็ตรหัสผ่านในไม่ช้า โปรดคลิกลิงก์ในอีเมล', 'Jika email ini memiliki akun, email reset akan segera dikirim. Klik tautan di dalamnya.'],
+    newPwTitle: ['設定新密碼', 'Set a new password', 'ตั้งรหัสผ่านใหม่', 'Atur kata sandi baru'],
+    newPw:      ['新密碼（至少 8 碼）', 'New password (min. 8 characters)', 'รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)', 'Kata sandi baru (min. 8 karakter)'],
+    newPw2:     ['再輸入一次', 'Confirm password', 'ยืนยันรหัสผ่าน', 'Ulangi kata sandi'],
+    savePw:     ['儲存新密碼', 'Save password', 'บันทึกรหัสผ่านใหม่', 'Simpan kata sandi baru'],
+    pwShort:    ['密碼至少需要 8 碼。', 'Password must be at least 8 characters.', 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'Kata sandi minimal 8 karakter.'],
+    pwMismatch: ['兩次輸入的密碼不一致。', 'Passwords do not match.', 'รหัสผ่านทั้งสองช่องไม่ตรงกัน', 'Kedua kata sandi tidak sama.'],
+    pwSaved:    ['密碼已更新。', 'Password updated.', 'อัปเดตรหัสผ่านแล้ว', 'Kata sandi diperbarui.'],
+    badDomain:  ['只允許 @sucoot.com 的信箱登入。', 'Only @sucoot.com accounts can sign in.', 'เข้าสู่ระบบได้เฉพาะอีเมล @sucoot.com', 'Hanya email @sucoot.com yang dapat masuk.'],
+    badLogin:   ['帳號或密碼錯誤，或帳號已停用。', 'Wrong email or password, or the account is disabled.', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ', 'Email atau kata sandi salah, atau akun dinonaktifkan.'],
+    idleOut:    ['閒置超過 12 小時，已自動登出，請重新登入。', 'Signed out after 12 hours of inactivity. Please sign in again.', 'ไม่มีการใช้งานเกิน 12 ชั่วโมง ระบบออกจากระบบอัตโนมัติ โปรดเข้าสู่ระบบอีกครั้ง', 'Keluar otomatis setelah 12 jam tidak aktif. Silakan masuk lagi.'],
+    noLib:      ['無法載入登入元件，請確認網路連線後重新整理。', 'Could not load the sign-in library. Check your connection and reload.', 'โหลดส่วนประกอบการเข้าสู่ระบบไม่ได้ โปรดตรวจสอบการเชื่อมต่อแล้วโหลดหน้าใหม่', 'Komponen masuk tidak dapat dimuat. Periksa koneksi lalu muat ulang.'],
+    signOut:    ['登出', 'Sign out', 'ออกจากระบบ', 'Keluar'],
+    admin:      ['管理員', 'Admin', 'ผู้ดูแล', 'Admin'],
+    linkBad:    ['連結已失效或已使用過，請重新申請。', 'This link is invalid or has expired. Please request a new one.', 'ลิงก์หมดอายุหรือถูกใช้แล้ว โปรดขอใหม่', 'Tautan tidak berlaku atau sudah dipakai. Silakan minta lagi.'],
+    langLabel:  ['語言', 'Language', 'ภาษา', 'Bahasa'],
   };
-  const lang = () => { try { return (typeof S !== 'undefined' && S && S.lang) || 'zh'; } catch (e) { return 'zh'; } };
-  const tr = k => TXT[k][lang() === 'zh' ? 0 : 1];
+  // 語言：登入畫面選定後記在瀏覽器（fw-lang），並套用到整個程式；分頁中不再提供語言選單
+  const LANGS = { zh: '中文', en: 'English', th: 'ไทย', id: 'Bahasa Indonesia' };
+  const LIDX = { zh: 0, en: 1, th: 2, id: 3 };
+  const HTML_LANG = { zh: 'zh-Hant', en: 'en', th: 'th', id: 'id' };
+  let LOGIN_LANG = (() => {
+    try { const v = localStorage.getItem('fw-lang'); if (v && LIDX[v] !== undefined) return v; } catch (e) { }
+    try { if (typeof S !== 'undefined' && S && LIDX[S.lang] !== undefined) return S.lang; } catch (e) { }
+    return 'zh';
+  })();
+  const lang = () => LOGIN_LANG;
+  const tr = k => { const a = TXT[k]; return a[LIDX[LOGIN_LANG]] || a[1]; };
+  // 把語言套用到程式（透過原本的語言選單觸發各頁更新）
+  function applyAppLang(l) {
+    document.documentElement.lang = HTML_LANG[l] || 'zh-Hant';
+    const sel = document.getElementById('lang');
+    if (sel && sel.value !== l) { sel.value = l; sel.dispatchEvent(new Event('change')); }
+  }
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const okDomain = e => typeof e === 'string' && e.trim().toLowerCase().endsWith(DOMAIN);
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -67,6 +83,7 @@
   css.textContent = `
 html:not(.fw-authed) body > *:not(#authGate){display:none!important}
 html.fw-authed #authGate{display:none!important}
+header .right #lang{display:none!important}
 #authGate{--ag-navy:#1F4E79;--ag-navy2:#163C5E;--ag-paper:#E8EEF2;--ag-ink:#1B2733;--ag-muted:#4A5866;--ag-line:#B9C4CC;--ag-amber:#D9A01E;--ag-concrete:#8E979D;--ag-err:#B3261E;--ag-ok:#1E6B3A;
   position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,1fr);background:#fff;color:var(--ag-ink);overflow:auto;
   font-family:"Noto Sans TC","Noto Sans",system-ui,sans-serif}
@@ -94,6 +111,11 @@ html.fw-authed #authGate{display:none!important}
 #authGate .ag-msg.ok{color:var(--ag-ok)}
 #authGate .ag-link{background:none;border:0;padding:2px 0;font:inherit;font-size:14px;color:var(--ag-navy);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 #authGate .ag-foot{margin-top:16px}
+#authGate .ag-pane{position:relative}
+#authGate .ag-body{width:100%;max-width:360px}
+#authGate .ag-lang{position:absolute;top:24px;right:clamp(20px,4vw,48px);display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ag-muted)}
+#authGate .ag-lang select{font:inherit;font-size:14px;color:var(--ag-ink);height:34px;padding:0 8px;border:1.5px solid var(--ag-line);border-radius:4px;background:#fff}
+#authGate .ag-lang select:focus{outline:none;border-color:var(--ag-navy);box-shadow:0 0 0 3px rgba(31,78,121,.18)}
 #authGate .ag-note{margin:28px 0 0;padding-top:16px;border-top:1px solid #E1E7EB;font-size:13px;line-height:1.6;color:var(--ag-muted);text-wrap:pretty}
 /* 載入時：構件依施工順序由下往上組立（地面 → 支撐 → 主墊條 → 次墊條 → 貫材 → 面板 → 樓版），只播放一次 */
 #authGate .ag-l{animation:ag-in .42s ease-out both}
@@ -101,12 +123,14 @@ html.fw-authed #authGate{display:none!important}
 #authGate .ag-l5{animation-delay:.65s}#authGate .ag-l6{animation-delay:.8s}#authGate .ag-l7{animation-delay:.95s}#authGate .ag-l8{animation-delay:1.2s}
 @keyframes ag-in{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#authGate .ag-l{animation:none}}
+#authGate.ag-static .ag-l{animation:none}
 @media (max-width:860px){
   #authGate{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   #authGate .ag-art{min-height:0;padding:20px 16px 12px}
   #authGate .ag-draw{width:auto;max-width:100%;max-height:250px}
   #authGate .ag-tb{display:none}
-  #authGate .ag-pane{align-items:flex-start;padding:28px 20px 40px}
+  #authGate .ag-pane{align-items:flex-start;padding:64px 20px 40px}
+  #authGate .ag-lang{top:16px;right:20px}
 }
 #authUser{display:flex;align-items:center;gap:6px;font-size:12.5px;color:inherit;opacity:.9;max-width:260px}
 #authUser .au-mail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -206,23 +230,39 @@ html.fw-authed #authGate{display:none!important}
   ${leader((410 + W(HB.b) / 2).toFixed(2), Y(TOPB + HB.d / 2).toFixed(1), (L0 + 102).toFixed(1), tr('lbBearer'), 'ag-l8')}
   ${leader((410 + W(60.2) / 2).toFixed(2), Y(2650).toFixed(1), Y(2650).toFixed(1), tr('lbShore'), 'ag-l8')}
   <g class="ag-tb ag-l ag-l8" font-size="12">
-    <rect x="338" y="${G + 24}" width="262" height="48" fill="#fff" stroke="${INK}" stroke-width="1.4"/>
-    <line x1="338" y1="${G + 48}" x2="600" y2="${G + 48}" stroke="${INK}" stroke-width="1"/>
-    <line x1="382" y1="${G + 24}" x2="382" y2="${G + 72}" stroke="${INK}" stroke-width="1"/>
-    <text x="360" y="${G + 40}" text-anchor="middle" fill="#4A5866">${esc(tr('tbName'))}</text>
-    <text x="392" y="${G + 40}" font-weight="500">${esc(tr('tbDraw'))}</text>
-    <text x="360" y="${G + 64}" text-anchor="middle" fill="#4A5866">${esc(tr('tbOrg'))}</text>
-    <text x="392" y="${G + 64}" font-weight="500">${esc(tr('tbOrgV'))}</text></g>
+    <rect x="314" y="${G + 24}" width="286" height="48" fill="#fff" stroke="${INK}" stroke-width="1.4"/>
+    <line x1="314" y1="${G + 48}" x2="600" y2="${G + 48}" stroke="${INK}" stroke-width="1"/>
+    <line x1="358" y1="${G + 24}" x2="358" y2="${G + 72}" stroke="${INK}" stroke-width="1"/>
+    <text x="336" y="${G + 40}" text-anchor="middle" fill="#4A5866">${esc(tr('tbName'))}</text>
+    <text x="368" y="${G + 40}" font-weight="500">${esc(tr('tbDraw'))}</text>
+    <text x="336" y="${G + 64}" text-anchor="middle" fill="#4A5866">${esc(tr('tbOrg'))}</text>
+    <text x="368" y="${G + 64}" font-weight="500">${esc(tr('tbOrgV'))}</text></g>
 </svg>`;
   }
   // 左側圖面只建立一次（切換登入／忘記密碼等畫面時不重播動畫）
   function shell() {
     let pane = gate.querySelector('.ag-pane');
     if (!pane) {
-      gate.innerHTML = `<div class="ag-art" aria-hidden="true">${artSVG()}</div><main class="ag-pane"></main>`;
+      const opts = Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${k === LOGIN_LANG ? ' selected' : ''}>${v}</option>`).join('');
+      gate.innerHTML = `<div class="ag-art" aria-hidden="true">${artSVG()}</div><main class="ag-pane"><label class="ag-lang"><span>${esc(tr('langLabel'))}</span><select id="agLang">${opts}</select></label><div class="ag-body"></div></main>`;
+      gate.querySelector('#agLang').onchange = e => setLoginLang(e.target.value);
       pane = gate.querySelector('.ag-pane');
     }
-    return pane;
+    return pane.querySelector('.ag-body');
+  }
+
+  // 登入畫面切換語言：記住選擇、套用到程式、以新語言重畫登入畫面（保留已輸入的信箱）
+  function setLoginLang(l) {
+    if (LIDX[l] === undefined) return;
+    LOGIN_LANG = l;
+    try { localStorage.setItem('fw-lang', l); } catch (e) { }
+    applyAppLang(l);
+    const em = gate.querySelector('#agEmail'), keep = em ? em.value : null;
+    gate.classList.add('ag-static');   // 動畫只在第一次載入時播放
+    gate.innerHTML = '';
+    show(VIEW || 'login');
+    const em2 = gate.querySelector('#agEmail'); if (em2 && keep) em2.value = keep;
+    const sel = gate.querySelector('#agLang'); if (sel) sel.focus();
   }
 
   let VIEW = null;
@@ -344,6 +384,7 @@ html.fw-authed #authGate{display:none!important}
       return;
     }
     setUser(session);
+    applyAppLang(LOGIN_LANG);
     document.documentElement.classList.add('fw-authed');
     gate.innerHTML = ''; VIEW = null;
     // 程式在隱藏狀態下初始化，顯示後重新計算版面（含鋼柱頁 iframe）
@@ -407,6 +448,7 @@ html.fw-authed #authGate{display:none!important}
     else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') { if (session) setUser(session); }
   });
 
+  applyAppLang(LOGIN_LANG);
   show('login');
   (async () => {
     const { data } = await sb.auth.getSession();
