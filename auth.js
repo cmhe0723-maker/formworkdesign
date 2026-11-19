@@ -22,10 +22,10 @@
     adminNote:  ['帳號由系統管理員建立，需要帳號或無法登入請洽管理員。', 'Accounts are created by the system administrator. Contact them if you need an account or cannot sign in.'],
     lbSlab:     ['樓版混凝土', 'Slab concrete'],
     lbPanel:    ['面板', 'Panel'],
-    lbWaler:    ['貫材', 'Waler'],
+    lbWaler:    ['貫材(選用)', 'Waler (optional)'],
     lbJoist:    ['次墊條', 'Secondary joist'],
     lbBearer:   ['主墊條', 'Primary bearer'],
-    lbShore:    ['圓盤支撐架', 'Ringlock shoring'],
+    lbShore:    ['圓盤系統支撐架', 'Ring system shoring'],
     tbName:     ['圖名', 'Title'],
     tbDraw:     ['模板支撐系統斷面示意', 'Formwork and shoring section'],
     tbOrg:      ['單位', 'By'],
@@ -104,7 +104,7 @@ html.fw-authed #authGate{display:none!important}
 @media (max-width:860px){
   #authGate{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   #authGate .ag-art{min-height:0;padding:20px 16px 12px}
-  #authGate .ag-draw{width:min(520px,100%)}
+  #authGate .ag-draw{width:auto;max-width:100%;max-height:250px}
   #authGate .ag-tb{display:none}
   #authGate .ag-pane{align-items:flex-start;padding:28px 20px 40px}
 }
@@ -121,69 +121,98 @@ html.fw-authed #authGate{display:none!important}
 
   // 模板支撐系統斷面示意（由上而下：樓版、面板、貫材、次墊條、主墊條、支撐）
   function artSVG() {
-    const props = [110, 260, 410], walers = [];
-    for (let x = 72; x <= 448; x += 34) walers.push(x);
-    // 圓盤系統支撐架（側視，依實固 Ring System Scaffold 型錄）：比例約 1 m = 48 單位
-    // 由下而上：底板 140×140、底座螺桿與手輪（Jack Base）、基座套管（中央一個圓盤）、
-    // 立桿 Ø60.2（圓盤間距 500 mm）、頂座螺桿與手輪、U 型頂座（U-Head Jack）
-    const RINGS = [353, 329, 305, 281, 257, 233, 209];   // 圓盤高度：間距 500 mm（第一個在基座套管上）
-    const LIFTS = [353, 281, 209];                       // 每 1.5 m 一層橫桿與斜撐（含最下層基礎橫桿）
-    const ring = (x, y) => `<rect x="${x - 12}" y="${y - 1.8}" width="24" height="3.6" rx="1.2" fill="#1B2733"/>`;
-    const shore = x => `<g>
-      <path d="M${x - 15},166 V184 H${x + 15} V166" fill="none" stroke="#1B2733" stroke-width="2.2"/>
-      <rect x="${x - 2.2}" y="184" width="4.4" height="15" fill="#1B2733"/>
-      <rect x="${x - 9}" y="189" width="18" height="4" rx="1" fill="#1B2733"/>
-      <rect x="${x - 4.5}" y="199" width="9" height="148" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-      <rect x="${x - 4.5}" y="347" width="9" height="13" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-      ${RINGS.map(y => ring(x, y)).join('')}
-      <rect x="${x - 2.2}" y="360" width="4.4" height="23" fill="#1B2733"/>
-      <rect x="${x - 9}" y="368" width="18" height="4" rx="1" fill="#1B2733"/>
-      <rect x="${x - 13}" y="383" width="26" height="4" fill="#1B2733"/></g>`;
-    // 相鄰立桿之間：每層橫桿（兩端楔形插銷）＋斜撐；斜撐全部同向（左下往右上，跨高 1.5 m）
+    // ===== 比例：1 m = 100 單位（1 單位 = 10 mm）；地面 y = 520 =====
+    // 支撐架依實固 Ring System Scaffold 型錄第 15、18、19、20 頁之規格與比例繪製：
+    //   底板 140×140×t6、底座螺桿 Ø48.2（外露取 300）、手輪、基座套管 L200 Ø60.2（中央一圓盤）、
+    //   立桿 V61300 L3000 Ø60.2（圓盤間距 500）、U 型頂座螺桿 Ø48.2（外露取 250）、U 型頂座 170×150×H50×t6。
+    //   圓盤外徑約 124、厚約 9，橫桿／斜撐管徑約 48.6（依第 18 頁圖面比例）。
+    //   層高 1.5 m 兩層、架寬 1.5 m 兩格；斜撐同向。主墊條為 H150×75×5×7 斷面。
+    //   鋼板、腹板等極薄部位略加粗以便辨識。
+    const K = 0.1, G = 520, Y = mm => G - mm * K, W = mm => mm * K;
+    const INK = '#1B2733', MIN = 1.1;                       // 極薄部位的最小繪製厚度
+    const props = [110, 260, 410];                          // 立桿中心：間距 1.5 m
+    const walers = []; for (let x = 75; x <= 450; x += 30) walers.push(x);   // 貫材 60×60 @300（示意）
+    const RING0 = 406, RINGS = [];                          // 基座套管中央圓盤 406 mm，之後每 500 mm
+    for (let r = RING0; r <= 3406; r += 500) RINGS.push(r);
+    const LIFTS = [406, 1906, 3406];                        // 橫桿與斜撐：每 1.5 m 一層
+    const TOPB = 3762;                                      // U 型頂座底板頂面（主墊條底面）
+    const HB = { d: 150, b: 75, tw: 5, tf: 7 };             // H150×75×5×7
+    const yTop = Y(TOPB + HB.d);                            // 主墊條頂面
+    const rect = (x, y, w, h, fill, sw) => `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}"${sw ? ` stroke="${INK}" stroke-width="${sw}"` : ''}/>`;
+    const tube = (x, y1mm, y2mm, dmm) => rect(x - W(dmm) / 2, Y(y2mm), W(dmm), W(y2mm - y1mm), '#fff', 0.8);
+    const ring = (x, r) => rect(x - W(124) / 2, Y(r) - MIN / 2, W(124), MIN, INK);
+    const shore = x => {
+      let g = '';
+      g += rect(x - W(140) / 2, Y(6) - (MIN - W(6)), W(140), MIN, INK);           // 底板 140×140×t6
+      g += rect(x - W(48.2) / 2, Y(306), W(48.2), W(300), INK);                  // 底座螺桿（外露 300）
+      g += rect(x - W(120) / 2, Y(285), W(120), W(25), INK);                     // 手輪
+      g += tube(x, 306, 506, 60.2);                                              // 基座套管 L200
+      g += tube(x, 506, 3506, 60.2);                                             // 立桿 L3000
+      RINGS.forEach(r => g += ring(x, r));                                       // 圓盤 @500
+      g += rect(x - W(48.2) / 2, Y(3756), W(48.2), W(250), INK);                 // 頂座螺桿（外露 250）
+      g += rect(x - W(120) / 2, Y(3555), W(120), W(25), INK);                    // 手輪
+      g += `<path d="M${x - W(85)},${Y(3806)} V${Y(3756)} H${x + W(85)} V${Y(3806)}" fill="none" stroke="${INK}" stroke-width="${MIN}"/>`;   // U 型頂座 170×H50
+      return `<g>${g}</g>`;
+    };
+    // H150×75×5×7 斷面（腹板、翼板以最小厚度繪製）
+    const hbeam = x => {
+      const b = W(HB.b) / 2, tw = Math.max(W(HB.tw), 1.1) / 2, tf = Math.max(W(HB.tf), 1.5), y0 = Y(TOPB), y1 = Y(TOPB + HB.d);
+      const pts = [[x - b, y0], [x + b, y0], [x + b, y0 - tf], [x + tw, y0 - tf], [x + tw, y1 + tf], [x + b, y1 + tf], [x + b, y1], [x - b, y1], [x - b, y1 + tf], [x - tw, y1 + tf], [x - tw, y0 - tf], [x - b, y0 - tf]];
+      return `<polygon points="${pts.map(p => p.map(v => v.toFixed(2)).join(',')).join(' ')}" fill="#1F4E79" stroke="${INK}" stroke-width="0.4"/>`;
+    };
+    // 相鄰立桿之間：橫桿（兩端接頭＋楔形插銷）、斜撐（同向，左下往右上，跨高 1.5 m）
     const bays = props.slice(0, -1).map((x1, k) => {
-      const x2 = props[k + 1], a = x1 + 12, b = x2 - 12;
-      const ledger = y => `<rect x="${a}" y="${y - 2}" width="${b - a}" height="4" fill="#fff" stroke="#1B2733" stroke-width="1.1"/>`
-        + `<rect x="${a - 1}" y="${y - 6}" width="2.6" height="10" fill="#1B2733"/><rect x="${b - 1.6}" y="${y - 6}" width="2.6" height="10" fill="#1B2733"/>`;
-      let g = LIFTS.map(ledger).join('');
+      const x2 = props[k + 1], hd = W(55), off = W(60.2) / 2;                   // 接頭長約 55 mm
+      let g = '';
       for (let n = 0; n < LIFTS.length - 1; n++) {
-        const d = `M${a},${LIFTS[n]} L${b},${LIFTS[n + 1]}`;
-        g += `<path d="${d}" stroke="#1B2733" stroke-width="3.4" stroke-linecap="round"/><path d="${d}" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>`;
+        const a = [x1 + off + hd * 0.6, Y(LIFTS[n])], b = [x2 - off - hd * 0.6, Y(LIFTS[n + 1])];
+        const d = `M${a[0].toFixed(2)},${a[1].toFixed(2)} L${b[0].toFixed(2)},${b[1].toFixed(2)}`;
+        g += `<path d="${d}" stroke="${INK}" stroke-width="${W(48.6).toFixed(2)}" stroke-linecap="butt"/><path d="${d}" stroke="#fff" stroke-width="${(W(48.6) - 1.4).toFixed(2)}"/>`;
+        g += `<circle cx="${a[0].toFixed(2)}" cy="${a[1].toFixed(2)}" r="1.5" fill="${INK}"/><circle cx="${b[0].toFixed(2)}" cy="${b[1].toFixed(2)}" r="1.5" fill="${INK}"/>`;
       }
+      LIFTS.forEach(r => {
+        const y = Y(r), a = x1 + off + hd, b = x2 - off - hd;
+        g += rect(a, y - W(48.6) / 2, b - a, W(48.6), '#fff', 0.8);                       // 橫桿
+        [[x1 + off, 1], [x2 - off - hd, -1]].forEach(([hx]) => {
+          g += rect(hx, y - W(95) / 2, hd, W(95), INK);                                    // 接頭
+          g += rect(hx + hd / 2 - W(12) / 2, y - W(140) / 2, W(12), W(140), '#4A5866');    // 楔形插銷
+        });
+      });
       return `<g>${g}</g>`;
     }).join('');
     const leader = (x1, y1, y2, label, cls) => `<g class="ag-l ${cls}">
-      <circle cx="${x1}" cy="${y1}" r="2.6" fill="#1B2733"/>
-      <polyline points="${x1},${y1} 486,${y2} 500,${y2}" fill="none" stroke="#1B2733" stroke-width="1"/>
+      <circle cx="${x1}" cy="${y1}" r="2.6" fill="${INK}"/>
+      <polyline points="${x1},${y1} 486,${y2} 500,${y2}" fill="none" stroke="${INK}" stroke-width="1"/>
       <text x="506" y="${y2 + 5}" font-size="16" font-weight="500">${esc(label)}</text></g>`;
     let ground = '';
-    for (let x = 52; x <= 470; x += 12) ground += `<line x1="${x}" y1="390" x2="${x - 9}" y2="400" stroke="#8E979D" stroke-width="1"/>`;
-    return `<svg class="ag-draw" viewBox="-36 0 636 470" role="img" aria-label="${esc(tr('tbDraw'))}">
+    for (let x = 52; x <= 470; x += 12) ground += `<line x1="${x}" y1="${G}" x2="${x - 9}" y2="${G + 10}" stroke="#8E979D" stroke-width="1"/>`;
+    const hJ = W(135), hW = W(60), hP = 2.4, hS = W(250);                  // 次墊條 Top Beam 高 135、貫材 60、面板 18（加粗）、樓版 250
+    const yJ = yTop - hJ, yW = yJ - hW, yP = yW - hP, yS = yP - hS;
+    const L0 = yS - 6;                                                     // 標註文字由此往下每 24 一列
+    return `<svg class="ag-draw" viewBox="20 60 610 540" role="img" aria-label="${esc(tr('tbDraw'))}">
   <defs><pattern id="agHatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <line x1="0" y1="0" x2="0" y2="9" stroke="#8E979D" stroke-width="1.2"/></pattern></defs>
-  <g class="ag-l ag-l1"><line x1="40" y1="390" x2="480" y2="390" stroke="#1B2733" stroke-width="1.6"/>${ground}</g>
+  <g class="ag-l ag-l1"><line x1="40" y1="${G}" x2="480" y2="${G}" stroke="${INK}" stroke-width="1.6"/>${ground}</g>
   <g class="ag-l ag-l2">${bays}${props.map(shore).join('')}</g>
-  <g class="ag-l ag-l3">${props.map(x => `<rect x="${x - 13}" y="151" width="26" height="28" fill="#1F4E79" stroke="#1B2733" stroke-width="1.2"/>`).join('')}</g>
-  <g class="ag-l ag-l4"><rect x="60" y="135" width="400" height="16" fill="#CFDCE7" stroke="#1B2733" stroke-width="1.4"/></g>
-  <g class="ag-l ag-l5">${walers.map(x => `<rect x="${x - 6}" y="123" width="12" height="12" fill="#CFDCE7" stroke="#1B2733" stroke-width="1.2"/>`).join('')}</g>
-  <g class="ag-l ag-l6"><rect x="60" y="116" width="400" height="7" fill="#D9A01E" stroke="#1B2733" stroke-width="1.2"/></g>
-  <g class="ag-l ag-l7"><rect x="60" y="70" width="400" height="46" fill="url(#agHatch)" stroke="#1B2733" stroke-width="1.6"/>
-    <line x1="44" y1="70" x2="44" y2="116" stroke="#1B2733" stroke-width="1"/>
-    <line x1="38" y1="70" x2="54" y2="70" stroke="#1B2733" stroke-width="1"/><line x1="38" y1="116" x2="54" y2="116" stroke="#1B2733" stroke-width="1"/>
-    <text x="34" y="97" font-size="12.5" text-anchor="end">t = 250 mm</text></g>
-  ${leader(430, 88, 84, tr('lbSlab'), 'ag-l8')}
-  ${leader(446, 119.5, 112, tr('lbPanel'), 'ag-l8')}
-  ${leader(448, 129, 138, tr('lbWaler'), 'ag-l8')}
-  ${leader(452, 143, 164, tr('lbJoist'), 'ag-l8')}
-  ${leader(423, 168, 190, tr('lbBearer'), 'ag-l8')}
-  ${leader(414, 274, 274, tr('lbShore'), 'ag-l8')}
+  <g class="ag-l ag-l3">${props.map(hbeam).join('')}</g>
+  <g class="ag-l ag-l4"><rect x="60" y="${yJ}" width="400" height="${hJ}" fill="#CFDCE7" stroke="${INK}" stroke-width="1"/></g>
+  <g class="ag-l ag-l5">${walers.map(x => `<rect x="${x - hW / 2}" y="${yW}" width="${hW}" height="${hW}" fill="#CFDCE7" stroke="${INK}" stroke-width="0.8"/>`).join('')}</g>
+  <g class="ag-l ag-l6"><rect x="60" y="${yP}" width="400" height="${hP}" fill="#D9A01E" stroke="${INK}" stroke-width="0.6"/></g>
+  <g class="ag-l ag-l7"><rect x="60" y="${yS}" width="400" height="${hS}" fill="url(#agHatch)" stroke="${INK}" stroke-width="1.4"/></g>
+  ${leader(430, (yS + hS / 2).toFixed(1), (L0 + 6).toFixed(1), tr('lbSlab'), 'ag-l8')}
+  ${leader(446, (yP + hP / 2).toFixed(1), (L0 + 30).toFixed(1), tr('lbPanel'), 'ag-l8')}
+  ${leader(450, (yW + hW / 2).toFixed(1), (L0 + 54).toFixed(1), tr('lbWaler'), 'ag-l8')}
+  ${leader(456, (yJ + hJ / 2).toFixed(1), (L0 + 78).toFixed(1), tr('lbJoist'), 'ag-l8')}
+  ${leader((410 + W(HB.b) / 2).toFixed(2), Y(TOPB + HB.d / 2).toFixed(1), (L0 + 102).toFixed(1), tr('lbBearer'), 'ag-l8')}
+  ${leader((410 + W(60.2) / 2).toFixed(2), Y(2650).toFixed(1), Y(2650).toFixed(1), tr('lbShore'), 'ag-l8')}
   <g class="ag-tb ag-l ag-l8" font-size="12">
-    <rect x="318" y="416" width="262" height="48" fill="#fff" stroke="#1B2733" stroke-width="1.4"/>
-    <line x1="318" y1="440" x2="580" y2="440" stroke="#1B2733" stroke-width="1"/>
-    <line x1="362" y1="416" x2="362" y2="464" stroke="#1B2733" stroke-width="1"/>
-    <text x="340" y="432" text-anchor="middle" fill="#4A5866">${esc(tr('tbName'))}</text>
-    <text x="372" y="432" font-weight="500">${esc(tr('tbDraw'))}</text>
-    <text x="340" y="456" text-anchor="middle" fill="#4A5866">${esc(tr('tbOrg'))}</text>
-    <text x="372" y="456" font-weight="500">${esc(tr('tbOrgV'))}</text></g>
+    <rect x="338" y="${G + 24}" width="262" height="48" fill="#fff" stroke="${INK}" stroke-width="1.4"/>
+    <line x1="338" y1="${G + 48}" x2="600" y2="${G + 48}" stroke="${INK}" stroke-width="1"/>
+    <line x1="382" y1="${G + 24}" x2="382" y2="${G + 72}" stroke="${INK}" stroke-width="1"/>
+    <text x="360" y="${G + 40}" text-anchor="middle" fill="#4A5866">${esc(tr('tbName'))}</text>
+    <text x="392" y="${G + 40}" font-weight="500">${esc(tr('tbDraw'))}</text>
+    <text x="360" y="${G + 64}" text-anchor="middle" fill="#4A5866">${esc(tr('tbOrg'))}</text>
+    <text x="392" y="${G + 64}" font-weight="500">${esc(tr('tbOrgV'))}</text></g>
 </svg>`;
   }
   // 左側圖面只建立一次（切換登入／忘記密碼等畫面時不重播動畫）
