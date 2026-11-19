@@ -111,7 +111,7 @@
       lang: ['zh', 'en', 'th', 'id'].includes(S.lang) ? S.lang : 'zh',
       unit_force: u.F || 'kN', unit_length: u.L || 'm', unit_dim: u.d || 'mm', unit_stress: u.s || 'MPa',
       pressure: PROJ.press || null,   // 混凝土側壓力計算頁設定
-      report_name: r.name || '', report_org: r.org || '', report_title: r.title || '', report_item: r.item || '', report_no: r.no || '', report_designer: r.designer || '',
+      report_name: r.name || '', report_org: r.org || '', report_title: r.title || '', report_wm: r.wm || '', report_item: r.item || '', report_no: r.no || '', report_designer: r.designer || '',
       report_date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || '') ? r.date : null,
       report_paper: r.paper || 'A4',
       report_include: r.inc || { inputs: true, diag: true, res: true, design: true, details: true },
@@ -300,7 +300,7 @@
       }
 
       const rep = {
-        name: p.report_name, org: p.report_org || '', title: p.report_title || '', item: p.report_item, no: p.report_no, designer: p.report_designer,
+        name: p.report_name, org: p.report_org || '', title: p.report_title || '', wm: p.report_wm || '', item: p.report_item, no: p.report_no, designer: p.report_designer,
         date: p.report_date || '', paper: p.report_paper, inc: p.report_include, tabsInc: p.report_tabs_include,
       };
       const obj = {

@@ -20,6 +20,7 @@
 | `supabase/migrations/006_report_org_title.sql` | 封面工程單位、自訂計算書標題 |
 | `supabase/migrations/007_pressure.sql` | 混凝土側壓力計算頁設定、各頁載重來源 |
 | `supabase/migrations/008_column_test.sql` | 支撐頁「依破壞載重試驗報告檢核」的試驗值與安全係數 |
+| `supabase/migrations/009_report_watermark.sql` | 計算書浮水印文字 |
 
 ## 使用方式
 
@@ -42,6 +43,7 @@
   - 計算書目錄的各頁標題會附上該頁選用的材料與斷面規格。
 - 支撐容許承載力檢核頁：可輸入附件中破壞載重試驗報告的承載力值與安全係數（預設 2.5），計算單腳支撐之容許承載力 Pa,test = Pu,test ÷ 4 ÷ FS（試驗值為四支立柱合計），
   並與使用載重 P = D + L 比較，列為計算書第 8 節（未輸入試驗值時不列入）。
+- 浮水印：在「列印／匯出 PDF」對話框的「浮水印文字」輸入，套用到計算書、支撐頁 PDF 與列印；空白時為「實固股份有限公司」。
 - 封面：點選標題即可修改（可換行，也可還原預設）；欄位依序為工程名稱、工程單位、設計項目、設計者、日期。
 - 頁碼自面板頁起算為第 1 頁，封面與目錄不編頁碼。
   - 舊版三頁的專案檔、瀏覽器暫存與雲端專案，開啟時會自動補上「未使用」的貫材頁。
@@ -52,7 +54,7 @@
 ## Supabase 後台設定（一次性）
 
 1. **SQL Editor** 依序執行（`schema.sql` 只在全新資料庫執行一次，migrations 都可重複執行）：
-   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql` → `supabase/migrations/006_report_org_title.sql` → `supabase/migrations/007_pressure.sql` → `supabase/migrations/008_column_test.sql`
+   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql` → `supabase/migrations/006_report_org_title.sql` → `supabase/migrations/007_pressure.sql` → `supabase/migrations/008_column_test.sql` → `supabase/migrations/009_report_watermark.sql`
    （已執行過 `schema.sql` 的話，從 002 開始。）
 2. **Authentication → Sign In / Providers**
    - 關閉 **Allow new users to sign up**（網頁沒有註冊功能，這裡也要關，才能真正擋住自行註冊）。
