@@ -74,6 +74,7 @@
     ['nb', 'bot_bars_n', 'i'], ['db', 'bot_bar_size', 't'], ['nt', 'top_bars_n', 'i'], ['dt', 'top_bar_size', 't'],
     ['cov', 'cover_mm', 'n'], ['ds', 'stirrup_size', 't'], ['legs', 'stirrup_legs', 'i'], ['sv', 'stirrup_s_mm', 'n'],
     ['Fb', 'wood_fb_mpa', 'n'], ['Fv', 'wood_fv_mpa', 'n'],
+    ['lbCont', 'lb_braced', 'b'], ['covT', 'top_cover_mm', 'n'], ['rcv', 'rc_code', 't'],   // 010：連續側撐確認、上層筋位置、RC 規範版次
   ];
   const COL_FIELDS = [
     ['Fy', 'fy'], ['E', 'e'], ['hd', 'h_d'], ['hbf', 'h_bf'], ['htw', 'h_tw'], ['htf', 'h_tf'],
@@ -82,7 +83,8 @@
     ['L', 'length_x'], ['Ly', 'length_y'], ['Kx', 'kx'], ['Ky', 'ky'], ['PD', 'p_dead'], ['PL', 'p_live'],
     ['Ptest', 'test_load'], ['FSt', 'test_fs'],   // 依破壞載重試驗報告檢核（試驗承載力值、安全係數）
   ];
-  const COL_TEXT = [['pj', 'project_name'], ['mb', 'member_name'], ['dz', 'designer'], ['dt', 'design_date']];
+  const COL_TEXT = [['pj', 'project_name'], ['mb', 'member_name'], ['dz', 'designer'], ['dt', 'design_date'],
+    ['tRep', 'test_report'], ['tHt', 'test_height'], ['tLay', 'test_layers'], ['tBr', 'test_brace'], ['tJk', 'test_jack'], ['tEc', 'test_ecc']];   // 010：試驗配置
   const COL_SELECTS = [['code', 'design_code'], ['method', 'design_method'], ['grade', 'grade'], ['secType', 'section_type'], ['shape', 'shape'], ['bc', 'boundary'], ['kb', 'k_basis']];
   const COL_UNITS = [['uf', 'unit_force'], ['ul', 'unit_length'], ['ud', 'unit_dim'], ['us', 'unit_stress']];
   const COMBO_SETS = ['ASD', 'LRFD', 'TW-ASD', 'TW-LRFD'];
@@ -111,6 +113,7 @@
       lang: ['zh', 'en', 'th', 'id'].includes(S.lang) ? S.lang : 'zh',
       unit_force: u.F || 'kN', unit_length: u.L || 'm', unit_dim: u.d || 'mm', unit_stress: u.s || 'MPa',
       pressure: PROJ.press || null,   // 混凝土側壓力計算頁設定
+      column_reaction: PROJ.reac || null,   // 主墊條反力帶入鋼柱的來源（控制支點、組合、上拔）
       report_name: r.name || '', report_org: r.org || '', report_title: r.title || '', report_wm: r.wm || '', report_item: r.item || '', report_no: r.no || '', report_designer: r.designer || '',
       report_date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || '') ? r.date : null,
       report_paper: r.paper || 'A4',
@@ -125,11 +128,13 @@
       project_id: projectId, tab_index: DB_IDX[i],
       in_use: t.use !== false,
       tie_on: !!(t.tie && t.tie.on), tie_rod: (t.tie && t.tie.rod) || null, tie_nut: (t.tie && t.tie.nut) || null,
+      tie_cat: (t.tie && t.tie.cat) || null, tie_dbl: !!(t.tie && t.tie.dbl), tie_gap_mm: num(t.tie && t.tie.gap), tie_bf_mm: num(t.tie && t.tie.bf), tie_fp_mpa: num(t.tie && t.tie.fp),
       view: t.view || 'env', flip_m: !!t.flipM, both_we: t.bothWE !== false,
       defl_l_ratio_live: num(dl.L) ?? 360, defl_l_ratio_total: num(dl.T) ?? 240,
       defl_mode: ['ratio', 'abs', 'both'].includes(dl.mode) ? dl.mode : 'ratio', defl_abs_mm: num(dl.abs) ?? 3,
       slab_on: !!sl.on, slab_t_mm: num(sl.t) ?? 250, slab_gc_knm3: num(sl.gc) ?? 23.536, slab_sd_knm2: num(sl.sd) ?? 0,
       slab_ll_knm2: num(sl.ll) ?? 2.452, slab_s_m: num(sl.s) ?? 1, slab_no_d: !!sl.noD, slab_no_l: !!sl.noL, slab_src: sl.src === 'press' ? 'press' : 'slab',
+      slab_dist: ['fix', 'vert'].includes(sl.dist) ? sl.dist : 'max', slab_z_m: num(sl.z) ?? 0, slab_rev: !!sl.rev,
     };
   }
 
@@ -152,7 +157,7 @@
 
   function columnRow(projectId, o) {
     if (!o || o.app !== 'steel-column-design') return null;
-    const r = { project_id: projectId, version: o.version || 1, lang: o.lang || 'zh', include_self_weight: o.selfwt !== false };
+    const r = { project_id: projectId, version: o.version || 1, lang: o.lang || 'zh', include_self_weight: o.selfwt !== false, test_conf: !!o.testConf };
     const f = o.fields || {}, se = o.selects || {}, un = o.units || {};
     COL_FIELDS.forEach(([k, c]) => r[c] = num(f[k]));
     COL_TEXT.forEach(([k, c]) => r[c] = f[k] == null ? null : String(f[k]));
@@ -163,7 +168,7 @@
 
   function columnState2Obj(r) {
     if (!r) return null;
-    const o = { app: 'steel-column-design', version: r.version || 1, saved: r.updated_at, lang: r.lang || 'zh', units: {}, selects: {}, fields: {}, selfwt: r.include_self_weight !== false };
+    const o = { app: 'steel-column-design', version: r.version || 1, saved: r.updated_at, lang: r.lang || 'zh', units: {}, selects: {}, fields: {}, selfwt: r.include_self_weight !== false, testConf: !!r.test_conf };
     COL_FIELDS.forEach(([k, c]) => o.fields[k] = r[c] == null ? '' : String(r[c]));
     COL_TEXT.forEach(([k, c]) => o.fields[k] = r[c] == null ? '' : r[c]);
     COL_SELECTS.forEach(([k, c]) => { if (r[c] != null) o.selects[k] = r[c]; });
@@ -273,7 +278,7 @@
           code: p.design_code, method: p.design_method,
           view: t.view, flipM: t.flip_m, bothWE: t.both_we,
           dl: { L: num(t.defl_l_ratio_live), T: num(t.defl_l_ratio_total), mode: t.defl_mode, abs: num(t.defl_abs_mm) },
-          slab: { on: t.slab_on, t: num(t.slab_t_mm), gc: num(t.slab_gc_knm3), sd: num(t.slab_sd_knm2), ll: num(t.slab_ll_knm2), s: num(t.slab_s_m), ...(t.slab_no_d ? { noD: true } : {}), ...(t.slab_no_l ? { noL: true } : {}), ...(t.slab_src === 'press' ? { src: 'press' } : {}) },
+          slab: { on: t.slab_on, t: num(t.slab_t_mm), gc: num(t.slab_gc_knm3), sd: num(t.slab_sd_knm2), ll: num(t.slab_ll_knm2), s: num(t.slab_s_m), ...(t.slab_no_d ? { noD: true } : {}), ...(t.slab_no_l ? { noL: true } : {}), ...(t.slab_src === 'press' ? { src: 'press' } : {}), ...(t.slab_dist ? { dist: t.slab_dist } : {}), ...(t.slab_z_m != null ? { z: num(t.slab_z_m) } : {}), ...(t.slab_rev ? { rev: true } : {}) },
           spans: by(spans, t.id).map(r => {
             const s = {};
             SPAN_MAP.forEach(([k, c, ty]) => { const v = r[c]; if (v != null) s[k] = ty === 'n' || ty === 'i' ? +v : v; });
@@ -285,7 +290,7 @@
           moments: by(moms, t.id).map(r => ({ x: +r.x_m, M: +r.m_knm, c: r.load_case })),
           combos: combosObj,
           use: t.in_use !== false,
-          ...(t.tie_rod || t.tie_on ? { tie: { on: !!t.tie_on, ...(t.tie_rod ? { rod: t.tie_rod } : {}), ...(t.tie_nut ? { nut: t.tie_nut } : {}) } } : {}),
+          ...(t.tie_rod || t.tie_on ? { tie: { on: !!t.tie_on, ...(t.tie_rod ? { rod: t.tie_rod } : {}), ...(t.tie_nut ? { nut: t.tie_nut } : {}), ...(t.tie_cat ? { cat: t.tie_cat } : {}), dbl: !!t.tie_dbl, ...(t.tie_gap_mm != null ? { gap: num(t.tie_gap_mm) } : {}), bf: num(t.tie_bf_mm), fp: num(t.tie_fp_mpa) } } : {}),
         };
       }
       // 有貫材（資料庫編號 3）就排成四頁；舊專案維持三頁，開啟時由網頁自動插入貫材頁
@@ -308,7 +313,7 @@
         project: {
           active: outActive, u: { F: p.unit_force, L: p.unit_length, d: p.unit_dim, s: p.unit_stress },
           rep, code: p.design_code, method: p.design_method,
-          tabs: outTabs, press: p.pressure || null, column: columnState2Obj(colR), attachments: atts,
+          tabs: outTabs, press: p.pressure || null, reac: p.column_reaction || null, column: columnState2Obj(colR), attachments: atts,
         },
       };
       // 交給網頁原本的「開啟檔案」流程，沿用其驗證與正規化

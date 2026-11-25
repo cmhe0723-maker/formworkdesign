@@ -21,6 +21,7 @@
 | `supabase/migrations/007_pressure.sql` | 混凝土側壓力計算頁設定、各頁載重來源 |
 | `supabase/migrations/008_column_test.sql` | 支撐頁「依破壞載重試驗報告檢核」的試驗值與安全係數 |
 | `supabase/migrations/009_report_watermark.sql` | 計算書浮水印文字 |
+| `supabase/migrations/010_review_fixes.sql` | H 型鋼側撐確認、RC 上層筋與規範版次、側壓力分布方式、螺桿型錄版本與雙墊條承壓、試驗配置、反力帶入來源 |
 
 ## 使用方式
 
@@ -35,14 +36,25 @@
     或由底部泵送（ρgh 再加脈衝壓力，加成比例可自訂，預設 25%，三角形分布）。
   - **牆模載重**：側壓力頁「帶入各頁載重（牆模）」會把面板、貫材、次墊條、主墊條的自動均佈載重改為 w = Pmax × 各頁間距 s（D 載重，全長均佈）；
     修改側壓力參數會自動更新。各頁可在載重區的「載重來源」個別切換為樓版載重或混凝土側壓力，或按「全部改回樓版載重」。
+    「側壓力分布」可選：全長取 Pmax（保守，預設）、水平構件固定深度 z（w = p(z)·s）、垂直構件沿深度分段梯形載重（x = 0 處深度 z₀，可設 x = 0 在下方）。
+    側壓力頁未使用或輸入有誤時，使用側壓力的頁面標示「載重資料不足」，不做分析與檢核（計算書同樣標示）。
   - **貫材**：內容與次墊條相同，可勾選是否使用；未使用時不列入計算書，章節編號自動連續。
   - **對拉螺桿抗拉強度檢核**（主墊條頁最後）：勾選後從 SUCOOT 型錄的 Tie Rod、Wing Nut 選擇材料
     （螺帽只列出同螺紋者，也可「自動選擇合適組合」）。螺桿拉力取 ASD 載重組合下主墊條最大支承反力，
-    與型錄安全荷重（最大荷重 ÷ 2）比較；結果列在設計檢核與計算書中。
+    與型錄所列安全荷重（直接採型錄值）比較；結果列在設計檢核與計算書中。可填型錄型號與版本（列入計算書）。
+    勾選「雙主墊條」時另檢核螺帽底座承壓（Ab 為底座落在兩支墊條翼板內之面積，Fp 預設 0.9Fy）與型錄墊條間距上限。
     啟用時「5. 支撐容許承載力檢核」頁標示為未使用，不列入計算書。
   - 計算書目錄的各頁標題會附上該頁選用的材料與斷面規格。
+- **判定狀態**：各頁、結果卡片與計算書分為「合格／不合格／未完成檢核」。缺容量資料（自訂斷面、型錄無剪力值）、
+  H 型鋼未輸入側撐間距 Lb（Lb = 0 須勾選「受壓翼板連續側撐」）、雙墊條承壓資料不足時為「未完成檢核」，不視為合格。
+- **鋼筋混凝土梁**：彎矩以應變相容與力平衡求中性軸與鋼筋應力；上層筋位置可另外輸入（d⁻）；
+  可選 ACI 318-19／318-14（剪力依該版公式，318-19 在剪力筋不足時計入尺寸效應）；撓度以有效慣性矩 Ie 計算（未計長期撓度）。
+- **支撐頁「帶入主墊條控制支點反力」**：各支點依鋼柱頁的設計法組合（LRFD：1.4D、1.2D+1.6L；ASD：D+L）逐點包絡，
+  帶入控制支點的 D、L（保留正負號），並列出控制支點與組合；有上拔反力時提示另行抗拔檢核。來源說明列在支撐頁與計算書。
 - 支撐容許承載力檢核頁：可輸入附件中破壞載重試驗報告的承載力值與安全係數（預設 2.5），計算單腳支撐之容許承載力 Pa,test = Pu,test ÷ 4 ÷ FS（試驗值為四支立柱合計），
   並與使用載重 P = D + L 比較，列為計算書第 8 節（未輸入試驗值時不列入）。
+  可填試驗配置（報告編號、架高、層數、斜撐、調整座伸出量、偏心），須勾選「已確認實際配置與試驗相同或較保守」才給出判定，否則為未完成檢核；
+  單桿挫屈檢核與整架試驗結果各自判定。
 - 浮水印：在「列印／匯出 PDF」對話框的「浮水印文字」輸入，套用到計算書、支撐頁 PDF 與列印；空白時為「實固股份有限公司」。
 - 封面：點選標題即可修改（可換行，也可還原預設）；欄位依序為工程名稱、工程單位、設計項目、設計者、日期。
 - 頁碼自面板頁起算為第 1 頁，封面與目錄不編頁碼。
@@ -54,7 +66,7 @@
 ## Supabase 後台設定（一次性）
 
 1. **SQL Editor** 依序執行（`schema.sql` 只在全新資料庫執行一次，migrations 都可重複執行）：
-   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql` → `supabase/migrations/006_report_org_title.sql` → `supabase/migrations/007_pressure.sql` → `supabase/migrations/008_column_test.sql` → `supabase/migrations/009_report_watermark.sql`
+   `supabase/schema.sql` → `supabase/migrations/002_slab_flags.sql` → `supabase/migrations/003_auth_roles.sql` → `supabase/migrations/004_grants.sql` → `supabase/migrations/005_waler_tie.sql` → `supabase/migrations/006_report_org_title.sql` → `supabase/migrations/007_pressure.sql` → `supabase/migrations/008_column_test.sql` → `supabase/migrations/009_report_watermark.sql` → `supabase/migrations/010_review_fixes.sql`
    （已執行過 `schema.sql` 的話，從 002 開始。）
 2. **Authentication → Sign In / Providers**
    - 關閉 **Allow new users to sign up**（網頁沒有註冊功能，這裡也要關，才能真正擋住自行註冊）。
