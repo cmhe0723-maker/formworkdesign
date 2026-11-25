@@ -26,7 +26,7 @@ main{display:grid;grid-template-columns:minmax(400px,480px) 1fr;gap:16px;padding
 label.f{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--sub);min-width:0}
 input[type=number],select{font:inherit;font-size:13px;padding:5px 6px;border:1px solid #c9cec8;border-radius:6px;background:#fff;color:var(--ink);width:100%;min-width:0}
 input[type=number]{font-family:var(--mono)}
-input:focus,select:focus{outline:2px solid #9cc0e4;border-color:var(--accent)}
+input:focus,select:focus{outline:2px solid #9cc0e4;border-color:var(--accent)}input.req{border-color:#c58b0f;background:#fffaf0}
 .span-card{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;background:#fbfbfa}
 .span-card .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500}
 .span-card .hd .info{margin-left:auto;font-size:11.5px;color:var(--sub);font-family:var(--mono)}
@@ -469,7 +469,15 @@ function steelTW_ASD(s, p, Fy, E, L, warn, f, T) {
   L.push(`Ma = Fb·S = ${f(Ma / 1e6, 2)} kN·m；Va = Fv·Av = ${f(Va / 1e3, 2)} kN`);
   return { Mpos: Ma / 1e6, Mneg: Ma / 1e6, V: Va / 1e3, lines: L, warn };
 }
+// H 型鋼的側撐間距 Lb 為必填；Lb = 0 須確認受壓翼板連續側撐，否則彎矩強度不判定
+const lbStatus = s => s.mat !== 'steel' || s.sec !== 'H' ? null : (s.Lb == null || s.Lb === '' || !isFinite(+s.Lb)) ? 'incLb' : (+s.Lb === 0 && !s.lbCont) ? 'incLb0' : null;
 function designCapacity(s, method, T, code = 'AISC') {
+  const r = designCapacity0(s, method, T, code), st = lbStatus(s);
+  if (st && !r.err) { r.Mpos = r.Mneg = null; r.incM = T(st); r.lines = [...(r.lines || []), T(st)]; }
+  else if (!r.err && s.mat === 'steel' && s.sec === 'H' && +s.Lb === 0) r.lines = [...(r.lines || []), T('lbContUsed')];
+  return r;
+}
+function designCapacity0(s, method, T, code = 'AISC') {
   const p = secProps(s), L = [], warn = [], E = s.E * 1000, lrfd = method === 'LRFD';
   const f = (v, d = 1) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
   if (s.sec === 'cat') {
@@ -644,7 +652,7 @@ const DICT = {
   designParams: ['設計參數', 'Design parameters', 'พารามิเตอร์การออกแบบ', 'Parameter desain'],
   grade: ['鋼材等級', 'Steel grade', 'เกรดเหล็ก', 'Mutu baja'], custom: ['自訂', 'Custom', 'กำหนดเอง', 'Kustom'],
   Lb: ['側撐間距 Lb (m)', 'Unbraced Lb (m)', 'ระยะค้ำยัน Lb (m)', 'Lb tak terkekang (m)'],
-  LbNote: ['Lb = 0 表示受壓翼板連續側撐；Cb 保守取 1.0。', 'Lb = 0 means the compression flange is continuously braced; Cb = 1.0 is conservative.', 'Lb = 0 หมายถึงปีกรับแรงอัดถูกค้ำยันตลอด; Cb = 1.0 เป็นค่าปลอดภัย', 'Lb = 0 berarti sayap tekan terkekang menerus; Cb = 1,0 konservatif.'],
+  LbNote: ['Lb 為受壓翼板側撐點間距（必填）；受壓翼板連續側撐時請勾選上方選項（Lb = 0）。Cb 保守取 1.0。', 'Lb is the spacing of compression-flange bracing (required); tick the option above if the compression flange is continuously braced (Lb = 0). Cb = 1.0 is conservative.', 'Lb = 0 หมายถึงปีกรับแรงอัดถูกค้ำยันตลอด; Cb = 1.0 เป็นค่าปลอดภัย', 'Lb = 0 berarti sayap tekan terkekang menerus; Cb = 1,0 konservatif.'],
   fyr: ['鋼筋 fy (MPa)', 'Rebar fy (MPa)', 'fy เหล็กเสริม (MPa)', 'fy tulangan (MPa)'],
   botBars: ['下層筋（M⁺）', 'Bottom bars (M⁺)', 'เหล็กล่าง (M⁺)', 'Tulangan bawah (M⁺)'], topBars: ['上層筋（M⁻）', 'Top bars (M⁻)', 'เหล็กบน (M⁻)', 'Tulangan atas (M⁻)'],
   count: ['根數', 'No.', 'จำนวน', 'Jumlah'], size: ['號數', 'Size', 'ขนาด', 'Ukuran'],
@@ -1027,6 +1035,13 @@ Object.assign(DICT, {
 // ===================== 語言 =====================
 let S;
 Object.assign(DICT, {
+  incLb: ['H 型鋼未輸入側撐間距 Lb，彎矩強度未檢核（Lb 為必填）', 'Unbraced length Lb not entered for the H-section; flexural strength not checked (Lb is required)', 'ยังไม่ได้ป้อน Lb จึงไม่ได้ตรวจกำลังดัด', 'Lb belum diisi; kuat lentur tidak diperiksa'],
+  incLb0: ['Lb = 0 時須勾選「受壓翼板連續側撐」確認，否則彎矩強度不檢核', 'With Lb = 0, tick “Compression flange continuously braced” to confirm; otherwise flexural strength is not checked', 'Lb = 0 ต้องยืนยันว่าปีกรับแรงอัดค้ำยันต่อเนื่อง', 'Lb = 0 perlu konfirmasi sayap tekan terkekang menerus'],
+  lbCont: ['受壓翼板連續側撐（Lb = 0，已確認）', 'Compression flange continuously braced (Lb = 0, confirmed)', 'ปีกรับแรงอัดค้ำยันต่อเนื่อง (Lb = 0)', 'Sayap tekan terkekang menerus (Lb = 0)'],
+  lbContUsed: ['已確認受壓翼板連續側撐（Lb = 0），不折減側向扭轉挫屈。', 'Compression flange confirmed continuously braced (Lb = 0); no lateral-torsional buckling reduction.'],
+  LbReqPh: ['必填', 'required', 'จำเป็น', 'wajib'],
+  LbMissing: ['未輸入', 'not entered', 'ไม่ได้ป้อน', 'belum diisi'],
+  LbContShort: ['（連續側撐）', ' (continuously braced)'],
   inc: ['未完成檢核', 'Incomplete', 'ตรวจสอบไม่ครบ', 'Belum lengkap'],
   incShort: ['未完成', 'Not done', 'ไม่ได้ตรวจ', 'Belum'],
   someInc: ['有檢核項目未完成（其餘項目無不合格）', 'Some checks incomplete (no other check failed)', 'มีรายการที่ยังตรวจไม่ครบ', 'Ada pemeriksaan belum lengkap'],
@@ -1071,8 +1086,8 @@ const PRESET = {
   'TW-LRFD': [{ D: 1.4 }, { D: 1.2, L: 1.6, Lr: 0.5 }, { D: 1.2, Lr: 1.6, L: 0.5 }, { D: 1.2, Lr: 1.6, W: 0.8 }, { D: 1.2, W: 1.6, L: 0.5, Lr: 0.5 }, { D: 1.2, E: 1.0, L: 0.5 }, { D: 0.9, W: 1.6 }, { D: 0.9, E: 1.0 }],
   'TW-ASD': [{ D: 1 }, { D: 1, L: 1 }, { D: 1, Lr: 1 }, { D: 1, L: 1, Lr: 1 }, { D: 0.75, L: 0.75, W: 0.75 }, { D: 0.75, L: 0.75, E: 0.75 }, { D: 0.75, W: 0.75 }, { D: 0.75, E: 0.75 }]
 };
-const SPAN0 = { L: 6, mat: 'steel', E: 200, sec: 'H', b: 300, h: 600, D: 300, Do: 300, t: 10, H: 400, B: 200, tw: 8, tf: 13, Ic: 100, catId: 'BBx', splice: false, rH: 300, rB: 200, rt: 9, grade: 'A572-50', Fy: 345, Lb: 0, Cb: 1, fc: 28, fyr: 420, nb: 4, db: 'D22', nt: 4, dt: 'D22', cov: 65, ds: 'D10', legs: 2, sv: 150, Fb: 11, Fv: 1.2 };
-const steelH = (L, n = 'H400×200×8×13', o = {}) => { const [H, B, tw, tf] = HPRE[n]; return { ...SPAN0, L, H, B, tw, tf, ...o }; };
+const SPAN0 = { L: 6, mat: 'steel', E: 200, sec: 'H', b: 300, h: 600, D: 300, Do: 300, t: 10, H: 400, B: 200, tw: 8, tf: 13, Ic: 100, catId: 'BBx', splice: false, rH: 300, rB: 200, rt: 9, grade: 'A572-50', Fy: 345, Lb: null, lbCont: false, Cb: 1, fc: 28, fyr: 420, nb: 4, db: 'D22', nt: 4, dt: 'D22', cov: 65, ds: 'D10', legs: 2, sv: 150, Fb: 11, Fv: 1.2 };
+const steelH = (L, n = 'H400×200×8×13', o = {}) => { const [H, B, tw, tf] = HPRE[n]; return { ...SPAN0, L, H, B, tw, tf, Lb: 0, lbCont: true, ...o }; };
 const rc = (L, b, h, o = {}) => ({ ...SPAN0, L, mat: 'conc', sec: 'rect', b, h, fc: 28, E: +(4.7 * Math.sqrt(28)).toFixed(2), ...o });
 const base = o => ({ code: 'TW', lang: S ? S.lang : 'zh', u: S && S.u ? S.u : { F: 'kN', L: 'm', d: 'mm', s: 'MPa' }, method: 'LRFD', bothWE: true, dl: { L: 360, T: 240 }, combos: JSON.parse(JSON.stringify(PRESET)), view: 'env', flipM: false, points: [], dists: [], moments: [], ...o });
 const EXAMPLES = {
@@ -1202,10 +1217,10 @@ const fmt = (v, d = 2) => { if (!isFinite(v)) return '—'; const r = Number(v.t
 const totalL = () => S.spans.reduce((a, s) => a + (+s.L || 0), 0);
 const letter = j => String.fromCharCode(65 + j);
 function el(tag, attrs = {}, html = '') { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (html !== '') e.innerHTML = html; return e; }
-function numInput(obj, key, { min, onchange, rerender, ph, q } = {}) {
+function numInput(obj, key, { min, onchange, rerender, ph, q, nullable } = {}) {
   const f = q ? Q[q]()[0] : 1;
-  const i = el('input', { type: 'number', step: 'any' }); if (min !== undefined) i.min = min; if (ph) i.placeholder = ph; i.value = obj[key] === undefined || obj[key] === '' ? '' : Number((obj[key] * f).toPrecision(f === 1 ? 10 : 6));
-  i.addEventListener('input', () => { const v = parseFloat(i.value); if (i.value === '' && ph !== undefined) { delete obj[key]; onchange && onchange(); schedule(); return; } if (isFinite(v)) { obj[key] = v / f; onchange && onchange(); if (rerender) renderInputs(); schedule(); } });
+  const i = el('input', { type: 'number', step: 'any' }); if (min !== undefined) i.min = min; if (ph) i.placeholder = ph; i.value = obj[key] == null || obj[key] === '' ? '' : Number((obj[key] * f).toPrecision(f === 1 ? 10 : 6));
+  i.addEventListener('input', () => { const v = parseFloat(i.value); if (i.value === '' && nullable) { obj[key] = null; onchange && onchange(); schedule(); return; } if (i.value === '' && ph !== undefined) { delete obj[key]; onchange && onchange(); schedule(); return; } if (isFinite(v)) { obj[key] = v / f; onchange && onchange(); if (rerender) renderInputs(); schedule(); } });
   return i;
 }
 function field(label, input) { const l = el('label', { class: 'f' }); l.append(label); l.append(input); return l; }
@@ -1297,9 +1312,17 @@ function renderInputs() {
       const g = el('div', { class: 'g g4 mt' });
       if (s.mat === 'steel') {
         g.append(field('Cb', numInput(s, 'Cb', { min: 1 })));
-        if (s.sec === 'H') { const lf = field(T('Lb', { u: un('L') }), numInput(s, 'Lb', { min: 0, q: 'L' })); lf.style.gridColumn = 'span 2'; g.append(lf); }
+        if (s.sec === 'H') {
+          const li = numInput(s, 'Lb', { min: 0, q: 'L', nullable: true, ph: T('LbReqPh'), onchange: () => { if (s.Lb !== 0) s.lbCont = false; lc.checked = !!s.lbCont; } });
+          li.disabled = !!s.lbCont; li.classList.toggle('req', lbStatus(s) === 'incLb');
+          const lf = field(T('Lb', { u: un('L') }), li); lf.style.gridColumn = 'span 2'; g.append(lf);
+          const ll = el('label', { class: 'chk', style: 'grid-column:span 4' }), lc = el('input', { type: 'checkbox', class: 'lbCont' }); lc.checked = !!s.lbCont;
+          lc.onchange = () => { s.lbCont = lc.checked; s.Lb = lc.checked ? 0 : null; renderInputs(); schedule(); };
+          ll.append(lc, ' ' + T('lbCont')); g.append(ll);
+          if (lbStatus(s)) d.open = true;
+        }
         d.append(g);
-        if (s.sec === 'H') d.append(el('div', { class: 'note' }, T('LbNote')));
+        if (s.sec === 'H') d.append(el('div', { class: 'note', style: lbStatus(s) ? 'color:#9b3415' : '' }, T(lbStatus(s) || 'LbNote')));
       } else {
         const cvf = field(T('cover', { u: un('d') }), numInput(s, 'cov', { min: 1e-6, q: 'd' })); cvf.style.gridColumn = 'span 2'; g.append(cvf);
         const sp = field(T('spacing', { u: un('d') }), numInput(s, 'sv', { min: 0, q: 'd' })); sp.style.gridColumn = 'span 2'; g.append(sp);
@@ -2137,7 +2160,7 @@ function secDesc(s) {
 function strDesc(s) {
   const f = v => `${fq('s', v)} ${un('s')}`;
   if (s.sec === 'cat') { const c = CATALOG[s.catId]; return `${c.grade}, Fy = ${f(c.Fy)}\n${T('catAllow')}: M = ${fq('M', c.Ma)} ${un('M')}${c.Va != null ? `, V = ${fq('F', c.Va)} ${un('F')}` : ''}`; }
-  if (s.mat === 'steel') return `${s.grade && s.grade !== 'custom' ? s.grade + ', ' : ''}Fy = ${f(s.Fy)}`;
+  if (s.mat === 'steel') return `${s.grade && s.grade !== 'custom' ? s.grade + ', ' : ''}Fy = ${f(s.Fy)}` + (s.sec === 'H' ? `\nLb = ${s.Lb == null || s.Lb === '' ? T('LbMissing') : fq('L', +s.Lb) + ' ' + un('L') + (+s.Lb === 0 && s.lbCont ? T('LbContShort') : '')}` : '');
   if (s.mat === 'alum') return `Fy = ${f(s.Fy)}`;
   if (s.mat === 'conc') return `fc′ = ${f(s.fc)}\nfy = ${f(s.fyr)}\n${T('botBars')}: ${s.nb}-${s.db}\n${T('topBars')}: ${s.nt}-${s.dt}\n${T('stirrup')}: ${s.legs}-${s.ds}@${fq('d', s.sv)} ${un('d')}`;
   if (s.mat === 'wood') return `Fb = ${f(s.Fb)}\nFv = ${f(s.Fv)}`;
