@@ -469,6 +469,33 @@ function steelTW_ASD(s, p, Fy, E, L, warn, f, T) {
   L.push(`Ma = Fb·S = ${f(Ma / 1e6, 2)} kN·m；Va = Fv·Av = ${f(Va / 1e3, 2)} kN`);
   return { Mpos: Ma / 1e6, Mneg: Ma / 1e6, V: Va / 1e3, lines: L, warn };
 }
+// 鋼筋混凝土：規範版次（剪力、撓度）與正負彎矩有效深度
+const rcEd = s => s.rcv === '318-14' ? '318-14' : '318-19';
+const rcDepth = s => { const cb = +s.cov, ct = s.covT == null || s.covT === '' ? cb : +s.covT; return { cb, ct, dp: s.h - cb, dn: s.h - ct }; };
+// 撓度用有效慣性矩 Ie（未計長期撓度）：318-19 式 24.2.3.5b、318-14 式 24.2.3.5a；連續梁取正、負彎矩斷面之平均
+function rcIeInfo(s, Mpos, Mneg) {
+  if (s.mat !== 'conc' || s.sec !== 'rect') return null;
+  const b = s.b, h = s.h, fc = s.fc, Ec = s.E * 1000, n = 200000 / Ec, Ig = b * h ** 3 / 12, fr = 0.62 * Math.sqrt(fc), Mcr = fr * Ig / (h / 2), ed = rcEd(s), { dp, dn } = rcDepth(s);
+  const one = (As, d, Ma) => {
+    if (!(Ma > 1e-9)) return null;
+    const M = Ma * 1e6; if (!(As > 0) || !(d > 0)) return { Ma, Icr: null, Ie: Ig };
+    const nA = n * As, x = (-nA + Math.sqrt(nA * nA + 2 * b * nA * d)) / b, Icr = b * x ** 3 / 3 + nA * (d - x) ** 2;
+    let Ie;
+    if (ed === '318-14') { const r = Math.min(1, (Mcr / M) ** 3); Ie = r * Ig + (1 - r) * Icr; }
+    else Ie = M <= 2 / 3 * Mcr ? Ig : Icr / (1 - ((2 / 3) * Mcr / M) ** 2 * (1 - Icr / Ig));
+    return { Ma, Icr, Ie: Math.min(Ig, Ie), x };
+  };
+  const pos = one(s.nb * BARS[s.db], dp, Mpos), neg = one(s.nt * BARS[s.dt], dn, Mneg), v = [pos, neg].filter(Boolean);
+  return { Ig, Mcr, fr, n, pos, neg, ed, Ie: v.length ? v.reduce((a, o) => a + o.Ie, 0) / v.length : Ig };
+}
+function rcIeLines(o, T) {
+  const f = (v, d = 1) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d }), e6 = v => f(v / 1e6, 1) + '×10⁶ mm⁴';
+  const L = [T('rcIeHead', { v: 'ACI ' + o.ed, eq: o.ed === '318-14' ? 'Ie = (Mcr/Ma)³Ig + [1 − (Mcr/Ma)³]Icr' : 'Ie = Icr / [1 − ((2/3)Mcr/Ma)²(1 − Icr/Ig)]' })];
+  L.push(`fr = 0.62√fc′ = ${f(o.fr, 2)} MPa, Ig = ${e6(o.Ig)}, Mcr = fr·Ig/yt = ${f(o.Mcr / 1e6, 2)} kN·m, n = Es/Ec = ${f(o.n, 2)}`);
+  [['M⁺', o.pos], ['M⁻', o.neg]].forEach(([m, r]) => { if (r) L.push(`${m}: Ma = ${f(r.Ma, 2)} kN·m（D + L）, Icr = ${r.Icr == null ? '—' : e6(r.Icr)} → Ie = ${e6(r.Ie)}`); });
+  L.push(`Ie = ${e6(o.Ie)}（Ie/Ig = ${f(o.Ie / o.Ig, 3)}）；${T('rcIeNote')}`);
+  return L;
+}
 // H 型鋼的側撐間距 Lb 為必填；Lb = 0 須確認受壓翼板連續側撐，否則彎矩強度不判定
 const lbStatus = s => s.mat !== 'steel' || s.sec !== 'H' ? null : (s.Lb == null || s.Lb === '' || !isFinite(+s.Lb)) ? 'incLb' : (+s.Lb === 0 && !s.lbCont) ? 'incLb0' : null;
 function designCapacity(s, method, T, code = 'AISC') {
@@ -575,36 +602,67 @@ function designCapacity0(s, method, T, code = 'AISC') {
   }
   if (s.mat === 'conc') {
     if (s.sec !== 'rect') return { err: T('rcRectOnly') };
-    const b = s.b, h = s.h, fc = s.fc, fy = s.fyr, d = h - s.cov, Es = 200000, Ec = 4700 * Math.sqrt(fc);
+    const b = s.b, h = s.h, fc = s.fc, fy = s.fyr, Es = 200000, Ec = 4700 * Math.sqrt(fc), ed = rcEd(s);
+    const { dp, dn, cb, ct } = rcDepth(s);   // d⁺：下層筋（正彎矩）、d⁻：上層筋（負彎矩）
+    if (!(dp > 0 && dn > 0)) return { err: T('rcBadD') };
     const Asb = s.nb * BARS[s.db], Ast = s.nt * BARS[s.dt], Avs = s.legs * BARS[s.ds];
-    L.push(`b = ${b} mm, h = ${h} mm, d = ${f(d, 0)} mm；As⁺ = ${s.nb}-${s.db} = ${f(Asb, 0)} mm², As⁻ = ${s.nt}-${s.dt} = ${f(Ast, 0)} mm²`);
-    const Asmin = Math.max(0.25 * Math.sqrt(fc) / fy, 1.4 / fy) * b * d;
-    if (Asb < Asmin) warn.push(`${T('asMin')} As⁺ < As,min = ${f(Asmin, 0)} mm²`);
-    if (Ast < Asmin) warn.push(`${T('asMin')} As⁻ < As,min = ${f(Asmin, 0)} mm²`);
+    L.push(`b = ${b} mm, h = ${h} mm；d⁺ = h − ${f(cb, 0)} = ${f(dp, 0)} mm, d⁻ = h − ${f(ct, 0)} = ${f(dn, 0)} mm；As⁺ = ${s.nb}-${s.db} = ${f(Asb, 0)} mm², As⁻ = ${s.nt}-${s.dt} = ${f(Ast, 0)} mm²`);
+    L.push(T('rcCodeUsed', { v: 'ACI ' + ed }));
+    const amin = d => Math.max(0.25 * Math.sqrt(fc) / fy, 1.4 / fy) * b * d;
+    if (Asb < amin(dp)) warn.push(`${T('asMin')} As⁺ < As,min = ${f(amin(dp), 0)} mm²`);
+    if (Ast < amin(dn)) warn.push(`${T('asMin')} As⁻ < As,min = ${f(amin(dn), 0)} mm²`);
+    // 剪力用有效深度取兩者較小值；縱筋比取受拉筋較少者（保守）
+    const dS = Math.min(dp, dn), sq = Math.sqrt(Math.min(fc, 69)), fyt = Math.min(fy, 420);
+    const rhoW = Math.min(...[Asb, Ast].filter(v => v > 0).map(v => v / (b * dS)), Infinity);
     let Mp, Mm, Vc;
     if (lrfd) {
       const b1 = Math.max(0.65, Math.min(0.85, 0.85 - 0.05 * (fc - 28) / 7)), ety = fy / Es;
-      const flex = As => { if (As <= 0) return { M: 0, phi: 0.9, et: 0 }; const a = As * fy / (0.85 * fc * b), c = a / b1, et = 0.003 * (d - c) / c; let phi = et >= ety + 0.003 ? 0.9 : et <= ety ? 0.65 : 0.65 + 0.25 * (et - ety) / 0.003; return { M: phi * As * fy * (d - a / 2), phi, et, a }; };
-      const P = flex(Asb), N = flex(Ast);
+      // 應變相容 + 力平衡：0.85fc′·b·β1·c = As·fs，fs = min(Es·εs, fy)，εs = 0.003(d − c)/c
+      const flex = (As, d) => {
+        if (As <= 0) return { M: 0, phi: 0.9, et: 0, a: 0, c: 0, fs: 0, yld: true };
+        const k = 0.85 * fc * b * b1; let c = As * fy / k, es = 0.003 * (d - c) / c, fs = fy, yld = true;
+        if (es < ety) { const B = As * Es * 0.003; c = (-B + Math.sqrt(B * B + 4 * k * B * d)) / (2 * k); es = 0.003 * (d - c) / c; fs = Es * es; yld = false; }
+        const a = b1 * c, phi = es >= ety + 0.003 ? 0.9 : es <= ety ? 0.65 : 0.65 + 0.25 * (es - ety) / 0.003;
+        return { M: phi * As * fs * (d - a / 2), phi, et: es, a, c, fs, yld };
+      };
+      const P = flex(Asb, dp), N = flex(Ast, dn);
       if (P.et < 0.004 && Asb > 0) warn.push(`${T('etLow')} (M⁺ εt = ${f(P.et, 4)})`);
       if (N.et < 0.004 && Ast > 0) warn.push(`${T('etLow')} (M⁻ εt = ${f(N.et, 4)})`);
+      if (!P.yld && Asb > 0) warn.push(T('rcNoYield', { m: 'M⁺', fs: f(P.fs, 0) }));
+      if (!N.yld && Ast > 0) warn.push(T('rcNoYield', { m: 'M⁻', fs: f(N.fs, 0) }));
       Mp = P.M; Mm = N.M;
-      L.push(`β1 = ${f(b1, 3)}；M⁺: a = ${f(P.a || 0, 1)} mm, εt = ${f(P.et, 4)}, φ = ${f(P.phi, 3)} → φMn⁺ = ${f(Mp / 1e6, 2)} kN·m`);
-      L.push(`M⁻: a = ${f(N.a || 0, 1)} mm, εt = ${f(N.et, 4)}, φ = ${f(N.phi, 3)} → φMn⁻ = ${f(Mm / 1e6, 2)} kN·m`);
-      const Vcc = 0.17 * Math.sqrt(fc) * b * d; let Vs = s.sv > 0 ? Avs * fy * d / s.sv : 0; const Vsmax = 0.66 * Math.sqrt(fc) * b * d;
+      L.push(`β1 = ${f(b1, 3)}, εy = fy/Es = ${f(ety, 5)}；${T('rcStrain')}`);
+      const fl = (m, R, d) => `${m}: c = ${f(R.c || 0, 1)} mm, a = β1·c = ${f(R.a || 0, 1)} mm, εs = ${f(R.et, 4)} → fs = ${R.yld ? 'fy' : 'Es·εs'} = ${f(R.fs, 0)} MPa${R.yld ? '' : '（' + T('rcNotYield') + '）'}, φ = ${f(R.phi, 3)} → φMn = φ·As·fs·(d − a/2) = ${f(R.M / 1e6, 2)} kN·m`;
+      L.push(fl('M⁺', P, dp)); L.push(fl('M⁻', N, dn));
+      let Vs = s.sv > 0 ? Avs * fyt * dS / s.sv : 0; const Vsmax = 0.66 * sq * b * dS;
       if (Vs > Vsmax) { warn.push(T('vsMax')); Vs = Vsmax; }
+      let Vcc;
+      if (ed === '318-14') { Vcc = 0.17 * sq * b * dS; L.push(`ACI 318-14 §22.5.5.1: Vc = 0.17√fc′·b·d = ${f(Vcc / 1e3, 2)} kN（d = ${f(dS, 0)} mm）`); }
+      else {
+        const Avmin = s.sv > 0 ? Math.max(0.062 * sq, 0.35) * b * s.sv / fyt : Infinity, r3 = isFinite(rhoW) ? Math.cbrt(rhoW) : 0;
+        if (s.sv > 0 && Avs >= Avmin) {
+          const va = 0.17 * sq, vb = 0.66 * r3 * sq; Vcc = Math.max(va, vb) * b * dS;
+          L.push(`ACI 318-19 ${T('rcTbl')}: Av = ${f(Avs, 0)} ≥ Av,min = ${f(Avmin, 0)} mm² → Vc = max(0.17√fc′, 0.66ρw^⅓√fc′)·b·d = max(${f(va, 3)}, ${f(vb, 3)}) × ${f(b, 0)} × ${f(dS, 0)} = ${f(Vcc / 1e3, 2)} kN（ρw = ${f(rhoW, 4)}）`);
+        } else {
+          const ls = Math.min(1, Math.sqrt(2 / (1 + 0.004 * dS))); Vcc = 0.66 * ls * r3 * sq * b * dS;
+          L.push(`ACI 318-19 ${T('rcTbl')}: Av < Av,min = ${isFinite(Avmin) ? f(Avmin, 0) : '—'} mm² → Vc = 0.66λs·ρw^⅓·√fc′·b·d, λs = √(2/(1 + 0.004d)) = ${f(ls, 3)} → Vc = ${f(Vcc / 1e3, 2)} kN（ρw = ${f(rhoW, 4)}）`);
+          warn.push(T('rcAvMin'));
+        }
+        const cap = 0.42 * sq * b * dS; if (Vcc > cap) { Vcc = cap; L.push(`Vc ≤ 0.42√fc′·b·d = ${f(cap / 1e3, 2)} kN`); }
+      }
       Vc = 0.75 * (Vcc + Vs);
-      L.push(`Vc = 0.17√fc′·b·d = ${f(Vcc / 1e3, 2)} kN, Vs = Av·fyt·d/s = ${f(Vs / 1e3, 2)} kN（${s.legs}-${s.ds}@${s.sv}）→ φVn = 0.75(Vc+Vs) = ${f(Vc / 1e3, 2)} kN`);
-      L.push(T('rcLRFDnote'));
+      L.push(`Vs = Av·fyt·d/s = ${f(Vs / 1e3, 2)} kN（${s.legs}-${s.ds}@${s.sv}，fyt = ${f(fyt, 0)} MPa）→ φVn = 0.75(Vc + Vs) = ${f(Vc / 1e3, 2)} kN`);
+      L.push(T('rcLRFDnote2', { v: 'ACI ' + ed }));
     } else {
       const n = Math.max(6, Math.round(Es / Ec)), fca = 0.45 * fc, fsa = fy >= 420 ? 170 : 140;
-      const wsd = As => { if (As <= 0) return { M: 0, k: 0, j: 0 }; const r = As / (b * d), k = Math.sqrt(2 * r * n + (r * n) ** 2) - r * n, j = 1 - k / 3; return { M: Math.min(0.5 * fca * k * j * b * d * d, As * fsa * j * d), k, j }; };
-      const P = wsd(Asb), N = wsd(Ast); Mp = P.M; Mm = N.M;
+      const wsd = (As, d) => { if (As <= 0) return { M: 0, k: 0, j: 0 }; const r = As / (b * d), k = Math.sqrt(2 * r * n + (r * n) ** 2) - r * n, j = 1 - k / 3; return { M: Math.min(0.5 * fca * k * j * b * d * d, As * fsa * j * d), k, j }; };
+      const P = wsd(Asb, dp), N = wsd(Ast, dn); Mp = P.M; Mm = N.M;
       L.push(`${T('wsd')}: n = ${n}, fc,a = 0.45fc′ = ${f(fca, 1)} MPa, fs,a = ${fsa} MPa`);
-      L.push(`M⁺: k = ${f(P.k, 3)}, j = ${f(P.j, 3)} → Ma⁺ = ${f(Mp / 1e6, 2)} kN·m；M⁻: k = ${f(N.k, 3)}, j = ${f(N.j, 3)} → Ma⁻ = ${f(Mm / 1e6, 2)} kN·m`);
-      const vc = 0.09 * Math.sqrt(fc) * b * d; let vs = s.sv > 0 ? Avs * fsa * d / s.sv : 0; const vsmax = 0.37 * Math.sqrt(fc) * b * d; if (vs > vsmax) { warn.push(T('vsMax')); vs = vsmax; }
+      L.push(`M⁺ (d⁺): k = ${f(P.k, 3)}, j = ${f(P.j, 3)} → Ma⁺ = ${f(Mp / 1e6, 2)} kN·m；M⁻ (d⁻): k = ${f(N.k, 3)}, j = ${f(N.j, 3)} → Ma⁻ = ${f(Mm / 1e6, 2)} kN·m`);
+      const vc = 0.09 * Math.sqrt(fc) * b * dS; let vs = s.sv > 0 ? Avs * fsa * dS / s.sv : 0; const vsmax = 0.37 * Math.sqrt(fc) * b * dS; if (vs > vsmax) { warn.push(T('vsMax')); vs = vsmax; }
       Vc = vc + vs;
-      L.push(`Va = 0.09√fc′·b·d + Av·fs,a·d/s = ${f(vc / 1e3, 2)} + ${f(vs / 1e3, 2)} = ${f(Vc / 1e3, 2)} kN`);
+      L.push(`Va = 0.09√fc′·b·d + Av·fs,a·d/s = ${f(vc / 1e3, 2)} + ${f(vs / 1e3, 2)} = ${f(Vc / 1e3, 2)} kN（d = ${f(dS, 0)} mm）`);
+      L.push(T('rcWSDnote'));
     }
     return { Mpos: Mp / 1e6, Mneg: Mm / 1e6, V: Vc / 1e3, lines: L, warn };
   }
@@ -1042,6 +1100,21 @@ Object.assign(DICT, {
   LbReqPh: ['必填', 'required', 'จำเป็น', 'wajib'],
   LbMissing: ['未輸入', 'not entered', 'ไม่ได้ป้อน', 'belum diisi'],
   LbContShort: ['（連續側撐）', ' (continuously braced)'],
+  rcBadD: ['有效深度 d 必須大於 0（請檢查梁深與筋心至表面距離）', 'Effective depth d must be positive (check depth and bar-centroid distances)'],
+  rcCodeUsed: ['剪力與撓度依 {v}', 'Shear and deflection per {v}'],
+  rcStrain: ['以應變相容與力平衡求中性軸深度 c 與鋼筋應力 fs（未降伏時 fs = Es·εs < fy）', 'Neutral axis c and steel stress fs from strain compatibility and equilibrium (fs = Es·εs < fy if not yielding)'],
+  rcNotYield: ['鋼筋未降伏', 'steel not yielding'],
+  rcNoYield: ['{m} 拉力筋未降伏（fs = {fs} MPa < fy），屬壓力控制斷面，已以實際鋼筋應力計算強度；建議減少鋼筋量或加大斷面。', '{m} tension steel does not yield (fs = {fs} MPa < fy); compression-controlled section, strength computed with the actual steel stress. Consider less steel or a larger section.'],
+  rcTbl: ['表 22.5.5.1', 'Table 22.5.5.1'],
+  rcAvMin: ['剪力筋小於 Av,min，Vc 依 ACI 318-19 計入尺寸效應（λs）。', 'Shear reinforcement below Av,min; Vc includes the size effect factor λs per ACI 318-19.'],
+  rcLRFDnote2: ['依 {v} 強度設計法；未計壓力筋。', '{v} strength design; compression steel ignored.'],
+  rcWSDnote: ['工作應力法（彈性轉換斷面），正、負彎矩分別採 d⁺、d⁻。', 'Working stress design (elastic transformed section) with d⁺ and d⁻ for positive and negative moment.'],
+  rcIeHead: ['撓度採有效慣性矩（{v}）：{eq}', 'Deflection uses the effective moment of inertia ({v}): {eq}'],
+  rcIeNote: ['撓度以 E·Ie 計算；未計長期撓度（潛變、乾縮）。', 'deflection computed with E·Ie; long-term deflection (creep, shrinkage) not included.'],
+  coverB: ['下層筋心至梁底 ({u})', 'Bottom bar c.g. to soffit ({u})', 'ระยะศูนย์เหล็กล่างถึงท้องคาน ({u})', 'Pusat tulangan bawah ke sisi bawah ({u})'],
+  coverT: ['上層筋心至梁頂 ({u})', 'Top bar c.g. to top face ({u})', 'ระยะศูนย์เหล็กบนถึงหลังคาน ({u})', 'Pusat tulangan atas ke sisi atas ({u})'],
+  sameAsBot: ['同下層', 'same as bottom', 'เท่ากับล่าง', 'sama dgn bawah'],
+  rcCode: ['RC 規範版次', 'RC code edition', 'ฉบับมาตรฐาน คสล.', 'Edisi kode beton'],
   inc: ['未完成檢核', 'Incomplete', 'ตรวจสอบไม่ครบ', 'Belum lengkap'],
   incShort: ['未完成', 'Not done', 'ไม่ได้ตรวจ', 'Belum'],
   someInc: ['有檢核項目未完成（其餘項目無不合格）', 'Some checks incomplete (no other check failed)', 'มีรายการที่ยังตรวจไม่ครบ', 'Ada pemeriksaan belum lengkap'],
@@ -1086,7 +1159,7 @@ const PRESET = {
   'TW-LRFD': [{ D: 1.4 }, { D: 1.2, L: 1.6, Lr: 0.5 }, { D: 1.2, Lr: 1.6, L: 0.5 }, { D: 1.2, Lr: 1.6, W: 0.8 }, { D: 1.2, W: 1.6, L: 0.5, Lr: 0.5 }, { D: 1.2, E: 1.0, L: 0.5 }, { D: 0.9, W: 1.6 }, { D: 0.9, E: 1.0 }],
   'TW-ASD': [{ D: 1 }, { D: 1, L: 1 }, { D: 1, Lr: 1 }, { D: 1, L: 1, Lr: 1 }, { D: 0.75, L: 0.75, W: 0.75 }, { D: 0.75, L: 0.75, E: 0.75 }, { D: 0.75, W: 0.75 }, { D: 0.75, E: 0.75 }]
 };
-const SPAN0 = { L: 6, mat: 'steel', E: 200, sec: 'H', b: 300, h: 600, D: 300, Do: 300, t: 10, H: 400, B: 200, tw: 8, tf: 13, Ic: 100, catId: 'BBx', splice: false, rH: 300, rB: 200, rt: 9, grade: 'A572-50', Fy: 345, Lb: null, lbCont: false, Cb: 1, fc: 28, fyr: 420, nb: 4, db: 'D22', nt: 4, dt: 'D22', cov: 65, ds: 'D10', legs: 2, sv: 150, Fb: 11, Fv: 1.2 };
+const SPAN0 = { L: 6, mat: 'steel', E: 200, sec: 'H', b: 300, h: 600, D: 300, Do: 300, t: 10, H: 400, B: 200, tw: 8, tf: 13, Ic: 100, catId: 'BBx', splice: false, rH: 300, rB: 200, rt: 9, grade: 'A572-50', Fy: 345, Lb: null, lbCont: false, Cb: 1, fc: 28, fyr: 420, nb: 4, db: 'D22', nt: 4, dt: 'D22', cov: 65, covT: null, rcv: '318-19', ds: 'D10', legs: 2, sv: 150, Fb: 11, Fv: 1.2 };
 const steelH = (L, n = 'H400×200×8×13', o = {}) => { const [H, B, tw, tf] = HPRE[n]; return { ...SPAN0, L, H, B, tw, tf, Lb: 0, lbCont: true, ...o }; };
 const rc = (L, b, h, o = {}) => ({ ...SPAN0, L, mat: 'conc', sec: 'rect', b, h, fc: 28, E: +(4.7 * Math.sqrt(28)).toFixed(2), ...o });
 const base = o => ({ code: 'TW', lang: S ? S.lang : 'zh', u: S && S.u ? S.u : { F: 'kN', L: 'm', d: 'mm', s: 'MPa' }, method: 'LRFD', bothWE: true, dl: { L: 360, T: 240 }, combos: JSON.parse(JSON.stringify(PRESET)), view: 'env', flipM: false, points: [], dists: [], moments: [], ...o });
@@ -1324,7 +1397,9 @@ function renderInputs() {
         d.append(g);
         if (s.sec === 'H') d.append(el('div', { class: 'note', style: lbStatus(s) ? 'color:#9b3415' : '' }, T(lbStatus(s) || 'LbNote')));
       } else {
-        const cvf = field(T('cover', { u: un('d') }), numInput(s, 'cov', { min: 1e-6, q: 'd' })); cvf.style.gridColumn = 'span 2'; g.append(cvf);
+        const cvf = field(T('coverB', { u: un('d') }), numInput(s, 'cov', { min: 1e-6, q: 'd' })); cvf.style.gridColumn = 'span 2'; g.append(cvf);
+        const ctf = field(T('coverT', { u: un('d') }), numInput(s, 'covT', { min: 1e-6, q: 'd', nullable: true, ph: T('sameAsBot') })); ctf.style.gridColumn = 'span 2'; g.append(ctf);
+        const ev = field(T('rcCode'), sel(s, 'rcv', { '318-19': 'ACI 318-19', '318-14': 'ACI 318-14' }, { rerender: false })); ev.style.gridColumn = 'span 2'; g.append(ev);
         const sp = field(T('spacing', { u: un('d') }), numInput(s, 'sv', { min: 0, q: 'd' })); sp.style.gridColumn = 'span 2'; g.append(sp);
         const bars = Object.fromEntries(Object.keys(BARS).map(k => [k, k]));
         g.append(field(T('botBars') + ' ' + T('count'), numInput(s, 'nb', { min: 0 }))); g.append(field(T('size'), sel(s, 'db', bars, { rerender: false })));
@@ -1546,6 +1621,21 @@ function renderSlab() {
   }
   box.append(wrap);
 }
+// 鋼筋混凝土跨：依使用載重（D + L）彎矩求有效慣性矩 Ie，撓度改以 E·Ie 重算（彎矩、剪力、反力仍採 E·Ig）
+const IE_INFO = new WeakMap();
+function applyCracked(model) {
+  if (!S.spans.some(s => s.mat === 'conc' && s.sec === 'rect')) return;
+  const rT = combineCases(RES, { D: 1, L: 1 }, false); let any = false;
+  const spans = model.spans.map((sp, i) => {
+    const s = S.spans[i]; if (s.mat !== 'conc' || s.sec !== 'rect') return sp;
+    const a = RES.sx[i], b = RES.sx[i + 1], e = ext(RES.xM, rT.M, a, b);
+    const o = rcIeInfo(s, Math.max(0, e.mx[1]), Math.max(0, -e.mn[1])); if (!o) return sp;
+    IE_INFO.set(s, o); any = true; return { ...sp, EI: s.E * o.Ie * 1e-6 };
+  });
+  if (!any) return;
+  const R2 = solveBeam({ ...model, spans });
+  for (const c in R2.cases) if (RES.cases[c]) RES.cases[c].D = R2.cases[c].D;
+}
 function run() {
   if (S.slab && applySlab() && $('dists')) renderDistTable();
   save();
@@ -1567,6 +1657,7 @@ function run() {
       dists: S.dists.map(u => ({ x1: +u.x1, x2: +u.x2, w1: +u.w1 || 0, w2: +u.w2 || 0, c: u.c })), cases: CASES
     };
     try { RES = solveBeam(model); } catch (e) { if (e.message === 'UNSTABLE') throw new Error(T('errUnstable')); throw e; }
+    applyCracked(model);
     buildViewOptions(); buildView(); draw(); designCheck();
   } catch (e) {
     err.textContent = T('errAnalysis') + e.message; err.style.display = 'block'; RES = null; VIEW = null; lastDC = null; S._worst = null; S._state = null;
@@ -1785,6 +1876,7 @@ function designCheck() {
     const dabs = r => { const e = ext(RES.xM, r.D, a, b); return Math.max(Math.abs(e.mx[1]), Math.abs(e.mn[1])); };
     const cant = S.supports[i].type === 'free' || S.supports[i + 1].type === 'free', Leff = (cant ? 2 : 1) * s.L * 1000;
     const cap = designCapacity(s, S.method, T, S.code || 'AISC');
+    if (s.mat === 'conc' && IE_INFO.has(s) && !cap.err) cap.lines = [...(cap.lines || []), ...rcIeLines(IE_INFO.get(s), T)];
     out.push({ i, s, Mp, Mn, Vd, gMp, gMn, gV, dL: dabs(rL), dT: dabs(rT), limL: deflLim(Leff, S.dl.L), limT: deflLim(Leff, S.dl.T), cap, cant });
   });
   lastDC = out; renderDC();
@@ -2162,7 +2254,7 @@ function strDesc(s) {
   if (s.sec === 'cat') { const c = CATALOG[s.catId]; return `${c.grade}, Fy = ${f(c.Fy)}\n${T('catAllow')}: M = ${fq('M', c.Ma)} ${un('M')}${c.Va != null ? `, V = ${fq('F', c.Va)} ${un('F')}` : ''}`; }
   if (s.mat === 'steel') return `${s.grade && s.grade !== 'custom' ? s.grade + ', ' : ''}Fy = ${f(s.Fy)}` + (s.sec === 'H' ? `\nLb = ${s.Lb == null || s.Lb === '' ? T('LbMissing') : fq('L', +s.Lb) + ' ' + un('L') + (+s.Lb === 0 && s.lbCont ? T('LbContShort') : '')}` : '');
   if (s.mat === 'alum') return `Fy = ${f(s.Fy)}`;
-  if (s.mat === 'conc') return `fc′ = ${f(s.fc)}\nfy = ${f(s.fyr)}\n${T('botBars')}: ${s.nb}-${s.db}\n${T('topBars')}: ${s.nt}-${s.dt}\n${T('stirrup')}: ${s.legs}-${s.ds}@${fq('d', s.sv)} ${un('d')}`;
+  if (s.mat === 'conc') { const { dp, dn } = rcDepth(s); return `ACI ${rcEd(s)}\nfc′ = ${f(s.fc)}\nfy = ${f(s.fyr)}\n${T('botBars')}: ${s.nb}-${s.db}, d⁺ = ${fq('d', dp)} ${un('d')}\n${T('topBars')}: ${s.nt}-${s.dt}, d⁻ = ${fq('d', dn)} ${un('d')}\n${T('stirrup')}: ${s.legs}-${s.ds}@${fq('d', s.sv)} ${un('d')}`; }
   if (s.mat === 'wood') return `Fb = ${f(s.Fb)}\nFv = ${f(s.Fv)}`;
   return '—';
 }
